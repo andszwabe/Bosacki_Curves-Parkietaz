@@ -323,7 +323,7 @@ function init() {
     }
 
     if (parsingError && activeSeries.length === 0) {
-      errorEl.textContent = "Błąd: Nie znaleziono poprawnych modułów w notacji. Użyj formatu [rozmiar][L/P] (np. 1p2p).";
+      errorEl.textContent = "Błąd: Nie znaleziono poprawnych modułów w notacji. Użyj formatu [rozmiar][L/P] (np. 1p12p3l).";
       errorEl.classList.remove("hidden");
       containerEl.innerHTML = "";
       statsEl.textContent = "Łuki: 0";
@@ -373,30 +373,48 @@ function init() {
     input.addEventListener("input", () => {
       const start = input.selectionStart;
       const originalValue = input.value;
-      
-      let filteredValue = "";
-      for (let i = 0; i < originalValue.length; i++) {
-        const char = originalValue[i];
-        if (filteredValue.length % 2 === 0) {
-          if (/[1-7]/.test(char)) filteredValue += char;
-        } else {
-          if (/[lLpP]/.test(char)) filteredValue += char;
+
+      /**
+       * State-machine filter: accepts [digits+][L/P] pairs of any digit length.
+       * State 'digit'  — expecting one or more digits (size)
+       * State 'letter' — at least one digit seen, now accepting L/P to close module
+       *                   (still accepts more digits while in this state so typing works naturally)
+       */
+      function filterNotation(raw: string): string {
+        let result = "";
+        let state: 'digit' | 'letter' = 'digit'; // start expecting a number
+        let pendingDigits = "";
+
+        for (const char of raw) {
+          if (/\d/.test(char)) {
+            // Always accumulate digits
+            pendingDigits += char;
+            state = 'letter'; // once we have digits, next valid char is a letter
+          } else if (/[lLpP]/.test(char)) {
+            if (pendingDigits.length > 0) {
+              // Complete the module: flush digits + direction
+              result += pendingDigits + char;
+              pendingDigits = "";
+              state = 'digit';
+            }
+            // If no digits before the letter, drop it
+          }
+          // Any other character is silently ignored
         }
+        // Trailing incomplete digits (no direction yet) are kept in the field
+        // so the user can continue typing without losing them
+        result += pendingDigits;
+        return result;
       }
+
+      const filteredValue = filterNotation(originalValue);
 
       if (originalValue !== filteredValue) {
         input.value = filteredValue;
+        // Recalculate cursor position relative to the filtered string
         if (start !== null) {
-          let prefix = originalValue.substring(0, start);
-          let filteredPrefix = "";
-          for (let i = 0; i < prefix.length; i++) {
-            const char = prefix[i];
-            if (filteredPrefix.length % 2 === 0) {
-              if (/[1-7]/.test(char)) filteredPrefix += char;
-            } else {
-              if (/[lLpP]/.test(char)) filteredPrefix += char;
-            }
-          }
+          const prefix = originalValue.substring(0, start);
+          const filteredPrefix = filterNotation(prefix);
           const cursorPosition = filteredPrefix.length;
           input.setSelectionRange(cursorPosition, cursorPosition);
         }
