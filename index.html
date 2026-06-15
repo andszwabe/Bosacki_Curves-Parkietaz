@@ -446,34 +446,33 @@ function generateArcs(modules) {
 }
 // SVG Renderer and UI Controller for Piotr Bosacki's Curves (Parkietaż)
 /**
- * Generates highly distinguishable colors sequentially across the HSL color wheel.
+ * Generates highly distinguishable colors sequentially across the HSL color wheel:
  * - The first color (index 0) is always Black.
- * - The second color (index 1) starts at Red (Hue = 0).
- * - Subsequent colors progress sequentially around the color wheel in 60-degree steps.
- * - To prevent exact color repetitions upon wrapping around the 360-degree wheel,
- *   each new cycle's starting angle is offset using the Golden Ratio conjugate (~137.508°),
- *   guaranteeing a mathematically non-repeating, interlacing hue sequence.
+ * - Subsequent colors cycle through: Red, Orange, Yellow, Green, Cyan, Blue, Magenta.
+ * - On each full cycle of 7 colors, the lightness shifts by +10%, then -10%, then +20%, then -20%, etc., relative to 45% base lightness.
  */
 function getColorForIndex(index) {
     if (index === 0) {
         return "#000000"; // First series is always black
     }
-    // The first actual colored series (index 1) starts at Red (0 degrees)
+    // The first actual colored series (index 1) starts the cycle
     const actualIndex = index - 1;
-    const huesPerCircle = 6;
-    const baseAngle = 60; // 60 degrees steps around the wheel (Red, Yellow, Green, Cyan, Blue, Magenta)
-    const circleNumber = Math.floor(actualIndex / huesPerCircle);
-    const hueIndex = actualIndex % huesPerCircle;
-    // Offset the starting angle for each cycle using the golden ratio conjugate (~137.508°).
-    // Modulo by baseAngle (60°) to distribute the offsets evenly within the first sector.
-    // Because the golden ratio is irrational, the offsets will NEVER repeat.
-    const goldenAngle = 137.507764;
-    const offset = (circleNumber * goldenAngle) % baseAngle;
-    const hue = (hueIndex * baseAngle + offset) % 360;
-    // Vary lightness dynamically using the golden ratio to ensure circles have different contrasts
-    const lightnessOffset = (circleNumber * 0.618033988749895) % 1;
-    const lightness = 40 + lightnessOffset * 15; // Lightness range: 40% to 55%
-    return `hsl(${hue.toFixed(2)}, 85%, ${lightness.toFixed(1)}%)`;
+    const BASE_HUES = [0, 30, 60, 120, 180, 240, 300]; // Red, Orange, Yellow, Green, Cyan, Blue, Magenta
+    const huesPerCycle = BASE_HUES.length;
+    const cycleNumber = Math.floor(actualIndex / huesPerCycle);
+    const hueIndex = actualIndex % huesPerCycle;
+    const hue = BASE_HUES[hueIndex];
+    // Calculate lightness shift: 0%, +10%, -10%, +20%, -20%, +30%, -30%...
+    let shift = 0;
+    if (cycleNumber > 0) {
+        const magnitude = 10 * Math.ceil(cycleNumber / 2);
+        const isOdd = (cycleNumber % 2 !== 0);
+        shift = isOdd ? magnitude : -magnitude;
+    }
+    // Base lightness is 45% to keep colors rich
+    const baseLightness = 45;
+    const lightness = Math.min(95, Math.max(10, baseLightness + shift));
+    return `hsl(${hue}, 85%, ${lightness}%)`;
 }
 // Global/Local State for color mode
 let colorMode = 'color';
