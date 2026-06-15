@@ -14,15 +14,34 @@ interface SeriesStateItem {
 }
 
 /**
- * Generates highly distinguishable colors across the HSL color wheel using the Golden Ratio.
- * The first color (index 0) starts at Hue = 0 (Red). Saturation = 80%, Lightness = 45%.
- * This ensures colors spread out as widely as possible and never repeat exactly.
+ * Generates highly distinguishable colors sequentially across the HSL color wheel.
+ * - The first color (index 0) is always Black.
+ * - The second color (index 1) starts at Red (Hue = 0).
+ * - Subsequent colors progress sequentially around the color wheel in 30-degree steps.
+ * - After a full 12-color cycle, it offsets the hue by 15-degrees and varies lightness to prevent repetition.
  */
 function getColorForIndex(index: number): string {
-  // Golden ratio conjugate angle: ~137.508 degrees
-  const goldenAngle = 137.508;
-  const hue = (index * goldenAngle) % 360;
-  return `hsl(${hue.toFixed(1)}, 80%, 45%)`;
+  if (index === 0) {
+    return "#000000"; // First series is always black
+  }
+  
+  // The first actual colored series (index 1) starts at Red (0 degrees)
+  const actualIndex = index - 1;
+  const huesPerCircle = 12;
+  const baseAngle = 30; // 30 degrees steps around the wheel
+  
+  const circleNumber = Math.floor(actualIndex / huesPerCircle);
+  const hueIndex = actualIndex % huesPerCircle;
+  
+  // Offset the starting angle for subsequent rounds so they interlace
+  const offset = (circleNumber * 15) % 30;
+  const hue = (hueIndex * baseAngle + offset) % 360;
+  
+  // Vary lightness slightly between rounds to increase contrast
+  const lightnessValues = [45, 55, 35];
+  const lightness = lightnessValues[circleNumber % lightnessValues.length];
+  
+  return `hsl(${hue.toFixed(1)}, 85%, ${lightness}%)`;
 }
 
 // Global/Local State for color mode
