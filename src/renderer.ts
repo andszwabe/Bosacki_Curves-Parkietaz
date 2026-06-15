@@ -22,6 +22,9 @@ const COLOR_PALETTE = [
   "#ea580c"  // Pomarańczowy (Orange)
 ];
 
+// Global/Local State for color mode
+let colorMode: 'color' | 'mono' = 'color';
+
 /**
  * Builds the SVG path 'd' attribute string from a list of ArcSegments.
  * Maps standard Cartesian coordinates (Y-up) to SVG space (Y-down) by negating Y.
@@ -94,7 +97,8 @@ function generateSVGElement(seriesList: ActiveSeries[]): SVGSVGElement {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", renderSVGPath(s.arcs));
     path.setAttribute("fill", "none");
-    path.setAttribute("stroke", s.color); // Preview uses its respective color
+    // If colorMode is 'mono', use black. Otherwise use its palette color.
+    path.setAttribute("stroke", colorMode === 'color' ? s.color : "#000000");
     path.setAttribute("stroke-width", strokeWidth);
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
@@ -152,7 +156,7 @@ function downloadSVG(seriesList: ActiveSeries[], filenameNotation: string) {
     pathElements += `  <path 
     d="${renderSVGPath(s.arcs)}" 
     fill="none" 
-    stroke="${s.color}" 
+    stroke="${colorMode === 'color' ? s.color : "#000000"}" 
     stroke-width="1" 
     stroke-linecap="round" 
     stroke-linejoin="round"
@@ -190,6 +194,7 @@ function init() {
   const downloadEl = document.getElementById("download-btn") as HTMLButtonElement;
   const seriesContainerEl = document.getElementById("series-container") as HTMLDivElement;
   const addSeriesBtn = document.getElementById("add-series-btn") as HTMLButtonElement;
+  const colorModeBtn = document.getElementById("color-mode-btn") as HTMLButtonElement;
 
   // Initial state with one series (Seria A)
   let seriesList: SeriesStateItem[] = [
@@ -304,13 +309,7 @@ function init() {
     row.className = "series-row";
     row.dataset.id = item.id;
 
-    // 1. Color badge
-    const badge = document.createElement("div");
-    badge.className = "color-badge";
-    badge.style.backgroundColor = item.color;
-    row.appendChild(badge);
-
-    // 2. Input wrapper
+    // 1. Input wrapper (Placed FIRST on the left)
     const wrapper = document.createElement("div");
     wrapper.className = "input-wrapper";
 
@@ -359,6 +358,12 @@ function init() {
 
     wrapper.appendChild(input);
     row.appendChild(wrapper);
+
+    // 2. Color badge (Placed SECOND, to the right of the input field)
+    const badge = document.createElement("div");
+    badge.className = "color-badge";
+    badge.style.backgroundColor = item.color;
+    row.appendChild(badge);
 
     // 3. Visibility button
     const visibilityBtn = document.createElement("button");
@@ -435,6 +440,22 @@ function init() {
 
   // Event Listeners
   addSeriesBtn.addEventListener("click", addSeries);
+
+  colorModeBtn.addEventListener("click", () => {
+    colorMode = colorMode === 'color' ? 'mono' : 'color';
+    colorModeBtn.querySelector("span")!.textContent = colorMode === 'color' ? "Kolor" : "Mono";
+    
+    // Toggle active class visually if needed
+    if (colorMode === 'mono') {
+      colorModeBtn.classList.add("btn-primary");
+      colorModeBtn.classList.remove("btn-secondary");
+    } else {
+      colorModeBtn.classList.add("btn-secondary");
+      colorModeBtn.classList.remove("btn-primary");
+    }
+    
+    renderCurves();
+  });
 
   downloadEl.addEventListener("click", () => {
     if (currentActiveSeries.length > 0) {

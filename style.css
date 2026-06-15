@@ -166,6 +166,12 @@ label {
   height: auto;
 }
 
+.series-actions-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+}
+
 input[type="text"] {
   width: 100%;
   background: #ffffff;

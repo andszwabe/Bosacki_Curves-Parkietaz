@@ -173,6 +173,12 @@ label {
   height: auto;
 }
 
+.series-actions-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+}
+
 input[type="text"] {
   width: 100%;
   background: #ffffff;
@@ -346,13 +352,22 @@ input[type="text"]:focus {
         <div id="series-container" class="series-list">
           <!-- Wiersze serii będą generowane dynamicznie przez JS -->
         </div>
-        <button id="add-series-btn" class="btn btn-secondary btn-small" style="margin-top: 0.2rem;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Dodaj serię (+)
-        </button>
+        <div class="series-actions-row">
+          <button id="add-series-btn" class="btn btn-secondary btn-small">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Dodaj serię
+          </button>
+          <button id="color-mode-btn" class="btn btn-secondary btn-small">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+            </svg>
+            <span>Kolor</span>
+          </button>
+        </div>
         <div id="error-display" class="error-box hidden"></div>
       </div>
 
@@ -438,6 +453,8 @@ const COLOR_PALETTE = [
     "#7c3aed", // Fioletowy (Purple)
     "#ea580c" // Pomarańczowy (Orange)
 ];
+// Global/Local State for color mode
+let colorMode = 'color';
 /**
  * Builds the SVG path 'd' attribute string from a list of ArcSegments.
  * Maps standard Cartesian coordinates (Y-up) to SVG space (Y-down) by negating Y.
@@ -499,7 +516,8 @@ function generateSVGElement(seriesList) {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", renderSVGPath(s.arcs));
         path.setAttribute("fill", "none");
-        path.setAttribute("stroke", s.color); // Preview uses its respective color
+        // If colorMode is 'mono', use black. Otherwise use its palette color.
+        path.setAttribute("stroke", colorMode === 'color' ? s.color : "#000000");
         path.setAttribute("stroke-width", strokeWidth);
         path.setAttribute("stroke-linecap", "round");
         path.setAttribute("stroke-linejoin", "round");
@@ -551,7 +569,7 @@ function downloadSVG(seriesList, filenameNotation) {
         pathElements += `  <path 
     d="${renderSVGPath(s.arcs)}" 
     fill="none" 
-    stroke="${s.color}" 
+    stroke="${colorMode === 'color' ? s.color : "#000000"}" 
     stroke-width="1" 
     stroke-linecap="round" 
     stroke-linejoin="round"
@@ -585,6 +603,7 @@ function init() {
     const downloadEl = document.getElementById("download-btn");
     const seriesContainerEl = document.getElementById("series-container");
     const addSeriesBtn = document.getElementById("add-series-btn");
+    const colorModeBtn = document.getElementById("color-mode-btn");
     // Initial state with one series (Seria A)
     let seriesList = [
         {
@@ -687,12 +706,7 @@ function init() {
         const row = document.createElement("div");
         row.className = "series-row";
         row.dataset.id = item.id;
-        // 1. Color badge
-        const badge = document.createElement("div");
-        badge.className = "color-badge";
-        badge.style.backgroundColor = item.color;
-        row.appendChild(badge);
-        // 2. Input wrapper
+        // 1. Input wrapper (Placed FIRST on the left)
         const wrapper = document.createElement("div");
         wrapper.className = "input-wrapper";
         const input = document.createElement("input");
@@ -741,6 +755,11 @@ function init() {
         });
         wrapper.appendChild(input);
         row.appendChild(wrapper);
+        // 2. Color badge (Placed SECOND, to the right of the input field)
+        const badge = document.createElement("div");
+        badge.className = "color-badge";
+        badge.style.backgroundColor = item.color;
+        row.appendChild(badge);
         // 3. Visibility button
         const visibilityBtn = document.createElement("button");
         visibilityBtn.className = "btn-icon";
@@ -807,6 +826,20 @@ function init() {
     }
     // Event Listeners
     addSeriesBtn.addEventListener("click", addSeries);
+    colorModeBtn.addEventListener("click", () => {
+        colorMode = colorMode === 'color' ? 'mono' : 'color';
+        colorModeBtn.querySelector("span").textContent = colorMode === 'color' ? "Kolor" : "Mono";
+        // Toggle active class visually if needed
+        if (colorMode === 'mono') {
+            colorModeBtn.classList.add("btn-primary");
+            colorModeBtn.classList.remove("btn-secondary");
+        }
+        else {
+            colorModeBtn.classList.add("btn-secondary");
+            colorModeBtn.classList.remove("btn-primary");
+        }
+        renderCurves();
+    });
     downloadEl.addEventListener("click", () => {
         if (currentActiveSeries.length > 0) {
             const combinedNotation = currentActiveSeries
