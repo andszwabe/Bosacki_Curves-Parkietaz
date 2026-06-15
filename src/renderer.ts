@@ -46,7 +46,7 @@ function getColorForIndex(index: number): string {
   const baseLightness = 45;
   const lightness = Math.min(95, Math.max(10, baseLightness + shift));
   
-  return `hsl(${hue}, 85%, ${lightness}%)`;
+  return `hsl(${hue}, 75%, ${lightness}%)`;
 }
 
 // Global/Local State for color mode
