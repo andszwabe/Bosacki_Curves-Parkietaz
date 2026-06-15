@@ -17,8 +17,10 @@ interface SeriesStateItem {
  * Generates highly distinguishable colors sequentially across the HSL color wheel.
  * - The first color (index 0) is always Black.
  * - The second color (index 1) starts at Red (Hue = 0).
- * - Subsequent colors progress sequentially around the color wheel in 60-degree steps (Primary/Secondary colors first).
- * - After a full 6-color cycle, it offsets by 30-degrees to generate Tertiary colors, and varies lightness to prevent repetition.
+ * - Subsequent colors progress sequentially around the color wheel in 60-degree steps.
+ * - To prevent exact color repetitions upon wrapping around the 360-degree wheel,
+ *   each new cycle's starting angle is offset using the Golden Ratio conjugate (~137.508°),
+ *   guaranteeing a mathematically non-repeating, interlacing hue sequence.
  */
 function getColorForIndex(index: number): string {
   if (index === 0) {
@@ -33,16 +35,18 @@ function getColorForIndex(index: number): string {
   const circleNumber = Math.floor(actualIndex / huesPerCircle);
   const hueIndex = actualIndex % huesPerCircle;
   
-  // Offset the starting angle for subsequent rounds so they interlace (0, 30, 15, 45...)
-  const offsets = [0, 30, 15, 45];
-  const offset = offsets[circleNumber % offsets.length];
+  // Offset the starting angle for each cycle using the golden ratio conjugate (~137.508°).
+  // Modulo by baseAngle (60°) to distribute the offsets evenly within the first sector.
+  // Because the golden ratio is irrational, the offsets will NEVER repeat.
+  const goldenAngle = 137.507764;
+  const offset = (circleNumber * goldenAngle) % baseAngle;
   const hue = (hueIndex * baseAngle + offset) % 360;
   
-  // Vary lightness slightly between rounds to increase contrast
-  const lightnessValues = [45, 55, 35];
-  const lightness = lightnessValues[circleNumber % lightnessValues.length];
+  // Vary lightness dynamically using the golden ratio to ensure circles have different contrasts
+  const lightnessOffset = (circleNumber * 0.618033988749895) % 1;
+  const lightness = 40 + lightnessOffset * 15; // Lightness range: 40% to 55%
   
-  return `hsl(${hue.toFixed(1)}, 85%, ${lightness}%)`;
+  return `hsl(${hue.toFixed(2)}, 85%, ${lightness.toFixed(1)}%)`;
 }
 
 // Global/Local State for color mode
