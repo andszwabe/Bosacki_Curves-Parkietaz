@@ -445,14 +445,17 @@ function generateArcs(modules) {
     return arcs;
 }
 // SVG Renderer and UI Controller for Piotr Bosacki's Curves (Parkietaż)
-const COLOR_PALETTE = [
-    "#000000", // Czarny
-    "#2563eb", // Niebieski (Royal Blue)
-    "#dc2626", // Czerwony (Ruby Red)
-    "#16a34a", // Zielony (Forest Green)
-    "#7c3aed", // Fioletowy (Purple)
-    "#ea580c" // Pomarańczowy (Orange)
-];
+/**
+ * Generates highly distinguishable colors across the HSL color wheel using the Golden Ratio.
+ * The first color (index 0) starts at Hue = 0 (Red). Saturation = 80%, Lightness = 45%.
+ * This ensures colors spread out as widely as possible and never repeat exactly.
+ */
+function getColorForIndex(index) {
+    // Golden ratio conjugate angle: ~137.508 degrees
+    const goldenAngle = 137.508;
+    const hue = (index * goldenAngle) % 360;
+    return `hsl(${hue.toFixed(1)}, 80%, 45%)`;
+}
 // Global/Local State for color mode
 let colorMode = 'color';
 /**
@@ -610,9 +613,10 @@ function init() {
             id: "series_0",
             notation: "1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l",
             visible: true,
-            color: COLOR_PALETTE[0]
+            color: getColorForIndex(0)
         }
     ];
+    let seriesCounter = 1;
     let currentActiveSeries = [];
     function getEyeIcon(visible) {
         if (visible) {
@@ -800,9 +804,9 @@ function init() {
         }
     }
     function addSeries() {
-        const nextIndex = seriesList.length;
-        const newId = `series_${Date.now()}_${nextIndex}`;
-        const nextColor = COLOR_PALETTE[nextIndex % COLOR_PALETTE.length];
+        const newId = `series_${Date.now()}_${seriesCounter}`;
+        const nextColor = getColorForIndex(seriesCounter);
+        seriesCounter++;
         seriesList.push({
             id: newId,
             notation: "",
