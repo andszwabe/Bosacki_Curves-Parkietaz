@@ -449,8 +449,8 @@ function generateArcs(modules) {
  * Generates highly distinguishable colors sequentially across the HSL color wheel.
  * - The first color (index 0) is always Black.
  * - The second color (index 1) starts at Red (Hue = 0).
- * - Subsequent colors progress sequentially around the color wheel in 30-degree steps.
- * - After a full 12-color cycle, it offsets the hue by 15-degrees and varies lightness to prevent repetition.
+ * - Subsequent colors progress sequentially around the color wheel in 60-degree steps (Primary/Secondary colors first).
+ * - After a full 6-color cycle, it offsets by 30-degrees to generate Tertiary colors, and varies lightness to prevent repetition.
  */
 function getColorForIndex(index) {
     if (index === 0) {
@@ -458,12 +458,13 @@ function getColorForIndex(index) {
     }
     // The first actual colored series (index 1) starts at Red (0 degrees)
     const actualIndex = index - 1;
-    const huesPerCircle = 12;
-    const baseAngle = 30; // 30 degrees steps around the wheel
+    const huesPerCircle = 6;
+    const baseAngle = 60; // 60 degrees steps around the wheel (Red, Yellow, Green, Cyan, Blue, Magenta)
     const circleNumber = Math.floor(actualIndex / huesPerCircle);
     const hueIndex = actualIndex % huesPerCircle;
-    // Offset the starting angle for subsequent rounds so they interlace
-    const offset = (circleNumber * 15) % 30;
+    // Offset the starting angle for subsequent rounds so they interlace (0, 30, 15, 45...)
+    const offsets = [0, 30, 15, 45];
+    const offset = offsets[circleNumber % offsets.length];
     const hue = (hueIndex * baseAngle + offset) % 360;
     // Vary lightness slightly between rounds to increase contrast
     const lightnessValues = [45, 55, 35];
