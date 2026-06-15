@@ -43,17 +43,17 @@
     <!-- Panel sterowania na dole -->
     <div class="controls-section">
       <div class="input-group">
-        <label for="notation-input">Notacja łuków</label>
-        <div class="input-wrapper">
-          <input 
-            type="text" 
-            id="notation-input" 
-            placeholder="Wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l - Seria A" 
-            value="1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l"
-            spellcheck="false"
-            autocomplete="off"
-          >
+        <label>Notacja łuków</label>
+        <div id="series-container" class="series-list">
+          <!-- Wiersze serii będą generowane dynamicznie przez JS -->
         </div>
+        <button id="add-series-btn" class="btn btn-secondary btn-small" style="margin-top: 0.2rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Dodaj serię (+)
+        </button>
         <div id="error-display" class="error-box hidden"></div>
       </div>
 
