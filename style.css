@@ -149,6 +149,12 @@ label {
   border-color: #94a3b8;
 }
 
+.btn-icon.active {
+  background: var(--accent-black) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-black) !important;
+}
+
 .btn-icon:disabled {
   opacity: 0.3;
   cursor: not-allowed;

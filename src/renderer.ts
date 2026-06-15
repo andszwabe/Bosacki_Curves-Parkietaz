@@ -1,6 +1,7 @@
 // SVG Renderer and UI Controller for Piotr Bosacki's Curves (Parkietaż)
 
 interface ActiveSeries {
+  id: string;
   arcs: ArcSegment[];
   color: string;
   notation: string;
@@ -13,44 +14,18 @@ interface SeriesStateItem {
   color: string;
 }
 
-/**
- * Generates highly distinguishable colors sequentially across the HSL color wheel:
- * - The first color (index 0) is always Black.
- * - Subsequent colors cycle through: Red, Orange, Yellow, Green, Cyan, Blue, Magenta.
- * - On each full cycle of 7 colors, the lightness shifts by +10%, then -10%, then +20%, then -20%, etc., relative to 45% base lightness.
- */
-function getColorForIndex(index: number): string {
-  if (index === 0) {
-    return "#000000"; // First series is always black
-  }
-  
-  // The first actual colored series (index 1) starts the cycle
-  const actualIndex = index - 1;
-  const BASE_HUES = [0, 30, 60, 120, 180, 240, 300]; // Red, Orange, Yellow, Green, Cyan, Blue, Magenta
-  const huesPerCycle = BASE_HUES.length;
-  
-  const cycleNumber = Math.floor(actualIndex / huesPerCycle);
-  const hueIndex = actualIndex % huesPerCycle;
-  
-  const hue = BASE_HUES[hueIndex];
-  
-  // Calculate lightness shift: 0%, +10%, -10%, +20%, -20%, +30%, -30%...
-  let shift = 0;
-  if (cycleNumber > 0) {
-    const magnitude = 10 * Math.ceil(cycleNumber / 2);
-    const isOdd = (cycleNumber % 2 !== 0);
-    shift = isOdd ? magnitude : -magnitude;
-  }
-  
-  // Base lightness is 45% to keep colors rich
-  const baseLightness = 45;
-  const lightness = Math.min(95, Math.max(10, baseLightness + shift));
-  
-  return `hsl(${hue}, 75%, ${lightness}%)`;
-}
+const COLOR_PALETTE = [
+  "#000000", // Czarny
+  "#2563eb", // Niebieski (Royal Blue)
+  "#dc2626", // Czerwony (Ruby Red)
+  "#16a34a", // Zielony (Forest Green)
+  "#7c3aed", // Fioletowy (Purple)
+  "#ea580c"  // Pomarańczowy (Orange)
+];
 
-// Global/Local State for color mode
+// Global State
 let colorMode: 'color' | 'mono' = 'color';
+let focusedSeriesId: string | null = null;
 
 /**
  * Builds the SVG path 'd' attribute string from a list of ArcSegments.
@@ -124,11 +99,16 @@ function generateSVGElement(seriesList: ActiveSeries[]): SVGSVGElement {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", renderSVGPath(s.arcs));
     path.setAttribute("fill", "none");
-    // If colorMode is 'mono', use black. Otherwise use its palette color.
     path.setAttribute("stroke", colorMode === 'color' ? s.color : "#000000");
     path.setAttribute("stroke-width", strokeWidth);
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
+    
+    // Apply focus dimming if another series is focused
+    if (focusedSeriesId !== null && s.id !== focusedSeriesId) {
+      path.setAttribute("opacity", "0.15");
+    }
+    
     svg.appendChild(path);
   }
 
@@ -161,6 +141,7 @@ function downloadSVG(seriesList: ActiveSeries[], filenameNotation: string) {
       radius: arc.radius * exportScale
     }));
     return {
+      id: s.id,
       arcs: scaledArcs,
       color: s.color
     };
@@ -180,13 +161,17 @@ function downloadSVG(seriesList: ActiveSeries[], filenameNotation: string) {
   let pathElements = "";
   for (const s of scaledSeries) {
     if (s.arcs.length === 0) continue;
+    
+    const isDimmed = focusedSeriesId !== null && s.id !== focusedSeriesId;
+    const opacityAttr = isDimmed ? ' opacity="0.15"' : '';
+    
     pathElements += `  <path 
     d="${renderSVGPath(s.arcs)}" 
     fill="none" 
     stroke="${colorMode === 'color' ? s.color : "#000000"}" 
     stroke-width="1" 
     stroke-linecap="round" 
-    stroke-linejoin="round"
+    stroke-linejoin="round"${opacityAttr}
   />\n`;
   }
 
@@ -213,6 +198,42 @@ ${pathElements}</svg>`;
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Generates highly distinguishable colors sequentially across the HSL color wheel:
+ * - The first color (index 0) is always Black.
+ * - Subsequent colors cycle through: Red, Orange, Yellow, Green, Cyan, Blue, Magenta.
+ * - On each full cycle of 7 colors, the lightness shifts by +10%, then -10%, then +20%, then -20%, etc., relative to 45% base lightness.
+ */
+function getColorForIndex(index: number): string {
+  if (index === 0) {
+    return "#000000"; // First series is always black
+  }
+  
+  // The first actual colored series (index 1) starts the cycle
+  const actualIndex = index - 1;
+  const BASE_HUES = [0, 30, 60, 120, 180, 240, 300]; // Red, Orange, Yellow, Green, Cyan, Blue, Magenta
+  const huesPerCycle = BASE_HUES.length;
+  
+  const cycleNumber = Math.floor(actualIndex / huesPerCycle);
+  const hueIndex = actualIndex % huesPerCycle;
+  
+  const hue = BASE_HUES[hueIndex];
+  
+  // Calculate lightness shift: 0%, +10%, -10%, +20%, -20%, +30%, -30%...
+  let shift = 0;
+  if (cycleNumber > 0) {
+    const magnitude = 10 * Math.ceil(cycleNumber / 2);
+    const isOdd = (cycleNumber % 2 !== 0);
+    shift = isOdd ? magnitude : -magnitude;
+  }
+  
+  // Base lightness is 45% to keep colors rich
+  const baseLightness = 45;
+  const lightness = Math.min(95, Math.max(10, baseLightness + shift));
+  
+  return `hsl(${hue}, 75%, ${lightness}%)`;
+}
+
 // UI Setup & DOM Controller
 function init() {
   const containerEl = document.getElementById("svg-container") as HTMLDivElement;
@@ -234,7 +255,6 @@ function init() {
   ];
 
   let seriesCounter = 1;
-
   let currentActiveSeries: ActiveSeries[] = [];
 
   function getEyeIcon(visible: boolean): string {
@@ -286,6 +306,7 @@ function init() {
         const arcs = generateArcs(modules);
         totalArcs += arcs.length;
         activeSeries.push({
+          id: item.id,
           arcs,
           color: item.color,
           notation: item.notation
@@ -338,7 +359,7 @@ function init() {
     row.className = "series-row";
     row.dataset.id = item.id;
 
-    // 1. Input wrapper (Placed FIRST on the left)
+    // 1. Input wrapper (Left side)
     const wrapper = document.createElement("div");
     wrapper.className = "input-wrapper";
 
@@ -388,7 +409,7 @@ function init() {
     wrapper.appendChild(input);
     row.appendChild(wrapper);
 
-    // 2. Color badge (Placed SECOND, to the right of the input field)
+    // 2. Color badge (Right of text field)
     const badge = document.createElement("div");
     badge.className = "color-badge";
     badge.style.backgroundColor = item.color;
@@ -402,11 +423,61 @@ function init() {
     visibilityBtn.addEventListener("click", () => {
       item.visible = !item.visible;
       visibilityBtn.innerHTML = getEyeIcon(item.visible);
+
+      // If we just hid the focused series, clear the focus
+      if (!item.visible && focusedSeriesId === item.id) {
+        focusedSeriesId = null;
+        // Reset all focus buttons to inactive
+        const allFocusButtons = seriesContainerEl.querySelectorAll(".focus-btn");
+        allFocusButtons.forEach(btn => btn.classList.remove("active"));
+      }
+
       renderCurves();
     });
+
+    // 4. Focus button (loupe icon)
+    const focusBtn = document.createElement("button");
+    focusBtn.className = "btn-icon focus-btn";
+    if (focusedSeriesId === item.id) {
+      focusBtn.classList.add("active");
+    }
+    focusBtn.title = "Skup się na tej serii (wycisz inne)";
+    focusBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    `;
+    focusBtn.addEventListener("click", () => {
+      if (focusedSeriesId === item.id) {
+        focusedSeriesId = null;
+      } else {
+        focusedSeriesId = item.id;
+        // Auto-show the series if it was hidden
+        if (!item.visible) {
+          item.visible = true;
+          visibilityBtn.innerHTML = getEyeIcon(true);
+        }
+      }
+
+      // Update all focus button active states visually
+      const allFocusButtons = seriesContainerEl.querySelectorAll(".focus-btn");
+      allFocusButtons.forEach((btn, idx) => {
+        const rowId = seriesList[idx].id;
+        if (rowId === focusedSeriesId) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+
+      renderCurves();
+    });
+
+    row.appendChild(focusBtn);
     row.appendChild(visibilityBtn);
 
-    // 4. Delete button
+    // 5. Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "btn-icon";
     deleteBtn.title = "Usuń serię";
@@ -439,6 +510,7 @@ function init() {
   }
 
   function addSeries() {
+    const nextIndex = seriesList.length;
     const newId = `series_${Date.now()}_${seriesCounter}`;
     const nextColor = getColorForIndex(seriesCounter);
     seriesCounter++;
@@ -462,6 +534,9 @@ function init() {
 
   function removeSeries(id: string) {
     if (seriesList.length <= 1) return;
+    if (focusedSeriesId === id) {
+      focusedSeriesId = null;
+    }
     seriesList = seriesList.filter(s => s.id !== id);
     refreshSeriesUI();
     renderCurves();
@@ -474,7 +549,6 @@ function init() {
     colorMode = colorMode === 'color' ? 'mono' : 'color';
     colorModeBtn.querySelector("span")!.textContent = colorMode === 'color' ? "Kolor" : "Mono";
     
-    // Toggle active class visually if needed
     if (colorMode === 'mono') {
       colorModeBtn.classList.add("btn-primary");
       colorModeBtn.classList.remove("btn-secondary");
