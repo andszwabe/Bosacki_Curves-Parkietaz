@@ -32,6 +32,16 @@ NEVER use "R" for right. The original Bosacki Python code uses "L"/"R" — we tr
 - Size cycle (12 elements): 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2
 - Chirality cycle (8 elements): P P P P L L L L
 
+### Obsidian Link Resolution
+
+When you encounter a reference in Obsidian wiki-link format `[[NoteName]]` in any project file, **search for the file by its name** in the following directories (in order):
+1. `/home/and/Drive/02_Zlecenia/2605_Bosacki_Curves/` (master folder)
+2. `/home/and/Drive/02_Zlecenia/2605_Bosacki_Curves/parkietaz-app/` (app folder)
+3. `/home/and/Drive/02_Zlecenia/2605_Bosacki_Curves/input/` (input materials)
+
+The file will have the same name as the link text, with `.md` extension. For example:
+`[[res_Bosacki_Curves_SVG_Arc_Generation_Solutions]]` → find `res_Bosacki_Curves_SVG_Arc_Generation_Solutions.md`
+
 ## Project Structure
 
 ```
@@ -50,5 +60,12 @@ parkietaz-app/          ← this repo (git-tracked)
 ## Reference
 
 - Source PDF: `../input/Bosacki_objasnienie-parkietazu.pdf`
+- Reference SVG (Seria A): `../input/seria-a.svg` — 24 named segments, exported from Inkscape
 - Original scripts: `../input/old-scripts-from-piotr/`
 - Project note: `../Z-2605_Bosacki_Curves-Parkietaż.md`
+- Research note: `../res_Bosacki_Curves_SVG_Arc_Generation_Solutions.md`
+
+## Rules for Agents
+
+- Every time you make changes to the codebase, review this `AGENTS.md` file and keep the project note `../Z-2605_Bosacki_Curves-Parkietaż.md` up to date with task progress, milestones, and completed features.
+

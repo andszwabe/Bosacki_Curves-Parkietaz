@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parkietaż — Piotr Bosacki</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap');
+
+:root {
+  --bg-color: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #cbd5e1;
+  --accent-black: #000000;
+  --accent-gray: #f1f5f9;
+  
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Inter', sans-serif;
+  --error-color: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2rem 1rem;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 0.2rem;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.2rem;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+}
+
+/* Visualization Board */
+.canvas-board {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+#curve-svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  color: #000000;
+}
+
+/* Controls section (direct on page background, no panel) */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+input[type="text"] {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+input[type="text"]:focus {
+  border-color: var(--accent-black);
+}
+
+/* Buttons Row */
+.actions-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  width: 100%;
+}
+
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  flex: 1; /* Stretches to fill remaining space */
+}
+
+.btn-primary {
+  background: var(--accent-black);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #27272a;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Error alert styling */
+.error-box {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: var(--error-color);
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-top: 0.2rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Stats board */
+.stats {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+  background: #f1f5f9;
+  padding: 0.6rem 0.8rem; /* matched button padding height */
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  height: 33px; /* aligns height perfectly with button */
+}
+
+/* Legend helper card */
+.legend-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.8rem;
+}
+
+.legend-card p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.3rem;
+}
+
+.legend-card p:last-child {
+  margin-bottom: 0;
+}
+
+.legend-card strong {
+  color: var(--text-primary);
+}
+
+.legend-card code {
+  background: #f1f5f9;
+  padding: 0.05rem 0.2rem;
+  border-radius: 3px;
+  font-family: monospace;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+}
+
+</style>
+  <script>
+    // Global error diagnostic handler
+    window.onerror = function(message, source, lineno, colno, error) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.top = '0';
+      errDiv.style.left = '0';
+      errDiv.style.width = '100%';
+      errDiv.style.backgroundColor = '#dc2626';
+      errDiv.style.color = '#ffffff';
+      errDiv.style.padding = '15px';
+      errDiv.style.zIndex = '99999';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.fontSize = '14px';
+      errDiv.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+      errDiv.innerHTML = '<strong>Błąd aplikacji:</strong> ' + message + ' <br><small>Plik: ' + source + ' | Linia: ' + lineno + '</small>';
+      document.body.appendChild(errDiv);
+      return false;
+    };
+  </script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Parkietaż</h1>
+      <p class="subtitle">Piotr Bosacki</p>
+    </header>
+
+    <!-- Obszar wizualizacji na górze -->
+    <main class="board-container">
+      <div class="canvas-board" id="svg-container">
+        <!-- SVG renderowane dynamicznie przez JS -->
+      </div>
+    </main>
+
+    <!-- Panel sterowania na dole -->
+    <div class="controls-section">
+      <div class="input-group">
+        <label for="notation-input">Notacja łuków</label>
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            id="notation-input" 
+            placeholder="Wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l - Seria A" 
+            value="1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l"
+            spellcheck="false"
+            autocomplete="off"
+          >
+        </div>
+        <div id="error-display" class="error-box hidden"></div>
+      </div>
+
+      <div class="actions-row">
+        <button id="download-btn" class="btn btn-primary" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Pobierz SVG
+        </button>
+        <div id="stats-display" class="stats">Łuki: 0</div>
+      </div>
+
+      <div class="legend-card">
+        <p><strong>Zasady formatu:</strong> Notacja składa się z bloków <code>[rozmiar][skrętność]</code>:</p>
+        <p>• Rozmiar: cyfra od <strong>1 do 7</strong> (promień = &phi;<sup>rozmiar</sup>)</p>
+        <p>• Skrętność: litera <strong>P</strong> (prawo) lub <strong>L</strong> (lewo). Wielkość liter nie ma znaczenia.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+"use strict";
+// Geometric Engine for Piotr Bosacki's Curves (Parkietaż)
+const PHI = (1 + Math.sqrt(5)) / 2; // Golden Ratio
+/**
+ * Parses the notation string (e.g. "1p2p3p4p5l6l7l6l5p...") into structured modules.
+ */
+function parseNotation(notation) {
+    const modules = [];
+    const regex = /(\d+)([lLpP])/g;
+    let match;
+    while ((match = regex.exec(notation)) !== null) {
+        const size = parseInt(match[1], 10);
+        const direction = match[2].toUpperCase();
+        modules.push({ size, direction });
+    }
+    return modules;
+}
+/**
+ * Generates a sequence of quarter-circle arc segments from modules using turtle graphics math.
+ * Invariant: 1p1p1p1p produces a perfect circle closing back to start.
+ */
+function generateArcs(modules) {
+    // Start turtle at (0, 0) facing UP (Math.PI / 2) to align with reference SVG chirality
+    let state = { x: 0, y: 0, angle: Math.PI / 2 };
+    const arcs = [];
+    for (const mod of modules) {
+        const radius = Math.pow(PHI, mod.size);
+        const turnRight = mod.direction === 'P';
+        const s = turnRight ? 1 : -1;
+        // The center of curvature is perpendicular to the current heading
+        const cx = state.x + radius * Math.cos(state.angle - s * Math.PI / 2);
+        const cy = state.y + radius * Math.sin(state.angle - s * Math.PI / 2);
+        // Endpoint of the 90° arc
+        const endX = cx + radius * Math.cos(state.angle);
+        const endY = cy + radius * Math.sin(state.angle);
+        // Update heading angle by 90°
+        const newAngle = state.angle - s * Math.PI / 2;
+        arcs.push({
+            startX: state.x,
+            startY: state.y,
+            endX,
+            endY,
+            radius,
+            sweep: turnRight ? 1 : 0,
+            largeArc: 0,
+            direction: mod.direction,
+            size: mod.size
+        });
+        state = { x: endX, y: endY, angle: newAngle };
+    }
+    return arcs;
+}
+// SVG Renderer and UI Controller for Piotr Bosacki's Curves (Parkietaż)
+/**
+ * Builds the SVG path 'd' attribute string from a list of ArcSegments.
+ * Maps standard Cartesian coordinates (Y-up) to SVG space (Y-down) by negating Y.
+ */
+function renderSVGPath(arcs) {
+    if (arcs.length === 0)
+        return '';
+    // Start at negated startY of first arc to adjust for SVG Y-down coordinate space
+    let d = `M ${arcs[0].startX.toFixed(4)} ${(-arcs[0].startY).toFixed(4)}`;
+    for (const arc of arcs) {
+        d += ` A ${arc.radius.toFixed(4)} ${arc.radius.toFixed(4)} 0 0 ${arc.sweep} ${arc.endX.toFixed(4)} ${(-arc.endY).toFixed(4)}`;
+    }
+    return d;
+}
+/**
+ * Computes the exact bounding box of the curve in SVG coordinate space.
+ */
+function computeBoundingBox(arcs) {
+    if (arcs.length === 0) {
+        return { minX: 0, maxX: 100, minY: 0, maxY: 100 };
+    }
+    let minX = arcs[0].startX;
+    let maxX = arcs[0].startX;
+    let minY = -arcs[0].startY;
+    let maxY = -arcs[0].startY;
+    for (const arc of arcs) {
+        const svgEndX = arc.endX;
+        const svgEndY = -arc.endY;
+        minX = Math.min(minX, svgEndX);
+        maxX = Math.max(maxX, svgEndX);
+        minY = Math.min(minY, svgEndY);
+        maxY = Math.max(maxY, svgEndY);
+    }
+    return { minX, maxX, minY, maxY };
+}
+/**
+ * Creates and configures the SVG element with dynamic viewBox and path elements.
+ */
+function generateSVGElement(arcs) {
+    const { minX, maxX, minY, maxY } = computeBoundingBox(arcs);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    // Add a 5% margin padding around the bounding box
+    const padding = Math.max(width, height) * 0.05 || 10;
+    const viewBoxX = minX - padding;
+    const viewBoxY = minY - padding;
+    const viewBoxWidth = width + 2 * padding;
+    const viewBoxHeight = height + 2 * padding;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `${viewBoxX.toFixed(4)} ${viewBoxY.toFixed(4)} ${viewBoxWidth.toFixed(4)} ${viewBoxHeight.toFixed(4)}`);
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("id", "curve-svg");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", renderSVGPath(arcs));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor"); // CSS controls color in UI
+    path.setAttribute("stroke-width", (Math.max(viewBoxWidth, viewBoxHeight) * 0.003).toFixed(4));
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("id", "curve-path");
+    svg.appendChild(path);
+    return svg;
+}
+/**
+ * Triggers a download of the SVG curve.
+ * Scales the coordinates to a standard 500-unit bounding box so that a stroke-width of 1
+ * represents a crisp, thin, print-friendly line (0.2% of the drawing scale) on export.
+ */
+function downloadSVG(notation, arcs) {
+    const { minX, maxX, minY, maxY } = computeBoundingBox(arcs);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const maxDim = Math.max(width, height);
+    // Scale factor to normalize the maximum dimension to 500 units
+    const exportScale = maxDim > 0 ? 500 / maxDim : 1;
+    // Generate scaled arcs for export
+    const scaledArcs = arcs.map(arc => (Object.assign(Object.assign({}, arc), { startX: arc.startX * exportScale, startY: arc.startY * exportScale, endX: arc.endX * exportScale, endY: arc.endY * exportScale, radius: arc.radius * exportScale })));
+    const { minX: sMinX, maxX: sMaxX, minY: sMinY, maxY: sMaxY } = computeBoundingBox(scaledArcs);
+    const sWidth = sMaxX - sMinX;
+    const sHeight = sMaxY - sMinY;
+    // 5% margin padding
+    const padding = Math.max(sWidth, sHeight) * 0.05 || 10;
+    const viewBoxX = sMinX - padding;
+    const viewBoxY = sMinY - padding;
+    const viewBoxWidth = sWidth + 2 * padding;
+    const viewBoxHeight = sHeight + 2 * padding;
+    const svgString = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg 
+  xmlns="http://www.w3.org/2000/svg" 
+  viewBox="${viewBoxX.toFixed(4)} ${viewBoxY.toFixed(4)} ${viewBoxWidth.toFixed(4)} ${viewBoxHeight.toFixed(4)}" 
+  width="100%" 
+  height="100%" 
+  style="background-color: #ffffff;"
+>
+  <path 
+    id="curve-path" 
+    d="${renderSVGPath(scaledArcs)}" 
+    fill="none" 
+    stroke="#000000" 
+    stroke-width="1" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+</svg>`;
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeNotation = notation.trim().replace(/[^a-zA-Z0-9]/g, "_");
+    link.href = url;
+    link.download = `output-curve_${safeNotation}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+// UI Setup & DOM Controller
+function init() {
+    const inputEl = document.getElementById("notation-input");
+    const downloadEl = document.getElementById("download-btn");
+    const containerEl = document.getElementById("svg-container");
+    const statsEl = document.getElementById("stats-display");
+    const errorEl = document.getElementById("error-display");
+    let currentArcs = [];
+    function render() {
+        const notation = inputEl.value.trim();
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+        if (!notation) {
+            errorEl.textContent = "Wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l - Seria A";
+            errorEl.classList.remove("hidden");
+            containerEl.innerHTML = "";
+            statsEl.textContent = "Łuki: 0";
+            downloadEl.disabled = true;
+            currentArcs = [];
+            return;
+        }
+        const modules = parseNotation(notation);
+        if (modules.length === 0) {
+            errorEl.textContent = "Błąd: Nie znaleziono poprawnych modułów w notacji. Użyj formatu [rozmiar][L/P] (np. 1p2p).";
+            errorEl.classList.remove("hidden");
+            containerEl.innerHTML = "";
+            statsEl.textContent = "Łuki: 0";
+            downloadEl.disabled = true;
+            currentArcs = [];
+            return;
+        }
+        // Generate arcs and render
+        try {
+            const arcs = generateArcs(modules);
+            const svg = generateSVGElement(arcs);
+            // Replace old SVG in container
+            containerEl.innerHTML = "";
+            containerEl.appendChild(svg);
+            currentArcs = arcs;
+            // Update stats
+            statsEl.textContent = `Łuki: ${arcs.length}`;
+            // Only enable the download button if the notation ends with a letter (completed module)
+            const endsWithLetter = /[lLpP]/.test(notation.slice(-1));
+            downloadEl.disabled = !endsWithLetter;
+        }
+        catch (err) {
+            errorEl.textContent = `Błąd generowania: ${err.message}`;
+            errorEl.classList.remove("hidden");
+            containerEl.innerHTML = "";
+            statsEl.textContent = "Łuki: 0";
+            downloadEl.disabled = true;
+            currentArcs = [];
+        }
+    }
+    // Event Listeners - render dynamically on every keystroke/input change
+    inputEl.addEventListener("input", () => {
+        const start = inputEl.selectionStart;
+        const originalValue = inputEl.value;
+        // Build strictly alternating pattern: digit (1-7), then letter (L, P, l, p)
+        let filteredValue = "";
+        for (let i = 0; i < originalValue.length; i++) {
+            const char = originalValue[i];
+            if (filteredValue.length % 2 === 0) {
+                if (/[1-7]/.test(char)) {
+                    filteredValue += char;
+                }
+            }
+            else {
+                if (/[lLpP]/.test(char)) {
+                    filteredValue += char;
+                }
+            }
+        }
+        if (originalValue !== filteredValue) {
+            inputEl.value = filteredValue;
+            if (start !== null) {
+                // Calculate the filtered position of the selection cursor
+                let prefix = originalValue.substring(0, start);
+                let filteredPrefix = "";
+                for (let i = 0; i < prefix.length; i++) {
+                    const char = prefix[i];
+                    if (filteredPrefix.length % 2 === 0) {
+                        if (/[1-7]/.test(char))
+                            filteredPrefix += char;
+                    }
+                    else {
+                        if (/[lLpP]/.test(char))
+                            filteredPrefix += char;
+                    }
+                }
+                const cursorPosition = filteredPrefix.length;
+                inputEl.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        }
+        render();
+    });
+    downloadEl.addEventListener("click", () => {
+        if (currentArcs.length > 0) {
+            downloadSVG(inputEl.value, currentArcs);
+        }
+    });
+    // Initial load rendering
+    render();
+}
+// Execute initialization safely depending on page load state
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+}
+else {
+    init();
+}
+
+</script>
+</body>
+</html>

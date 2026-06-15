@@ -1,0 +1,13 @@
+{
+  "name": "parkietaz-app",
+  "version": "1.0.0",
+  "description": "App for generating Piotr Bosacki curves (parkietaż)",
+  "main": "dist/renderer.js",
+  "scripts": {
+    "build": "tsc && node scripts/inline.js",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

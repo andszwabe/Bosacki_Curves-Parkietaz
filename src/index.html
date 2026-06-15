@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parkietaż — Piotr Bosacki</title>
+  <!-- INLINE_CSS -->
+  <script>
+    // Global error diagnostic handler
+    window.onerror = function(message, source, lineno, colno, error) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.top = '0';
+      errDiv.style.left = '0';
+      errDiv.style.width = '100%';
+      errDiv.style.backgroundColor = '#dc2626';
+      errDiv.style.color = '#ffffff';
+      errDiv.style.padding = '15px';
+      errDiv.style.zIndex = '99999';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.fontSize = '14px';
+      errDiv.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+      errDiv.innerHTML = '<strong>Błąd aplikacji:</strong> ' + message + ' <br><small>Plik: ' + source + ' | Linia: ' + lineno + '</small>';
+      document.body.appendChild(errDiv);
+      return false;
+    };
+  </script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Parkietaż</h1>
+      <p class="subtitle">Piotr Bosacki</p>
+    </header>
+
+    <!-- Obszar wizualizacji na górze -->
+    <main class="board-container">
+      <div class="canvas-board" id="svg-container">
+        <!-- SVG renderowane dynamicznie przez JS -->
+      </div>
+    </main>
+
+    <!-- Panel sterowania na dole -->
+    <div class="controls-section">
+      <div class="input-group">
+        <label for="notation-input">Notacja łuków</label>
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            id="notation-input" 
+            placeholder="Wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l - Seria A" 
+            value="1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l"
+            spellcheck="false"
+            autocomplete="off"
+          >
+        </div>
+        <div id="error-display" class="error-box hidden"></div>
+      </div>
+
+      <div class="actions-row">
+        <button id="download-btn" class="btn btn-primary" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Pobierz SVG
+        </button>
+        <div id="stats-display" class="stats">Łuki: 0</div>
+      </div>
+
+      <div class="legend-card">
+        <p><strong>Zasady formatu:</strong> Notacja składa się z bloków <code>[rozmiar][skrętność]</code>:</p>
+        <p>• Rozmiar: cyfra od <strong>1 do 7</strong> (promień = &phi;<sup>rozmiar</sup>)</p>
+        <p>• Skrętność: litera <strong>P</strong> (prawo) lub <strong>L</strong> (lewo). Wielkość liter nie ma znaczenia.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- INLINE_JS -->
+</body>
+</html>
