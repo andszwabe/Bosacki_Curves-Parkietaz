@@ -7,21 +7,13 @@ interface ActiveSeries {
   notation: string;
 }
 
-interface SeriesStateItem {
+interface ParsedLine {
   id: string;
+  lineIndex: number;
   notation: string;
-  visible: boolean;
+  modules: Module[];
   color: string;
 }
-
-const COLOR_PALETTE = [
-  "#000000", // Czarny
-  "#2563eb", // Niebieski (Royal Blue)
-  "#dc2626", // Czerwony (Ruby Red)
-  "#16a34a", // Zielony (Forest Green)
-  "#7c3aed", // Fioletowy (Purple)
-  "#ea580c"  // Pomarańczowy (Orange)
-];
 
 // Global State
 let colorMode: 'color' | 'mono' = 'color';
@@ -41,6 +33,51 @@ function renderSVGPath(arcs: ArcSegment[]): string {
     d += ` A ${arc.radius.toFixed(4)} ${arc.radius.toFixed(4)} 0 0 ${arc.sweep} ${arc.endX.toFixed(4)} ${(-arc.endY).toFixed(4)}`;
   }
   
+  return d;
+}
+
+/**
+ * Builds the SVG path 'd' attribute string for a partially completed curve.
+ * Draws first 'fullSegmentsCount' segments, then animates the next segment up to fraction 't - fullSegmentsCount'.
+ * Each segment takes exactly 1 second to draw (so t represents elapsed seconds).
+ */
+function renderPartialSVGPath(arcs: ArcSegment[], modules: Module[], t: number): string {
+  if (arcs.length === 0) return '';
+  if (t < 0) t = 0;
+  
+  const fullSegmentsCount = Math.floor(t);
+  const frac = t - fullSegmentsCount;
+
+  // Start at negated startY of first arc
+  let d = `M ${arcs[0].startX.toFixed(4)} ${(-arcs[0].startY).toFixed(4)}`;
+
+  // Draw full segments
+  const limit = Math.min(arcs.length, fullSegmentsCount);
+  for (let i = 0; i < limit; i++) {
+    const arc = arcs[i];
+    d += ` A ${arc.radius.toFixed(4)} ${arc.radius.toFixed(4)} 0 0 ${arc.sweep} ${arc.endX.toFixed(4)} ${(-arc.endY).toFixed(4)}`;
+  }
+
+  // Draw partial segment if applicable
+  if (fullSegmentsCount < arcs.length && frac > 0) {
+    const arc = arcs[fullSegmentsCount];
+    const radius = arc.radius;
+    const turnRight = arc.sweep === 1;
+    const s = turnRight ? 1 : -1;
+
+    const cx = arc.cx;
+    const cy = arc.cy;
+    const startAngle = arc.startAngle;
+
+    // Compute sweep endpoint at angle theta = frac * (Math.PI / 2)
+    const theta = frac * (Math.PI / 2);
+    const angleArg = startAngle - s * Math.PI / 2 - s * theta;
+    const partialEndX = cx - radius * Math.cos(angleArg);
+    const partialEndY = cy - radius * Math.sin(angleArg);
+
+    d += ` A ${radius.toFixed(4)} ${radius.toFixed(4)} 0 0 ${arc.sweep} ${partialEndX.toFixed(4)} ${(-partialEndY).toFixed(4)}`;
+  }
+
   return d;
 }
 
@@ -98,6 +135,7 @@ function generateSVGElement(seriesList: ActiveSeries[]): SVGSVGElement {
     if (s.arcs.length === 0) continue;
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", renderSVGPath(s.arcs));
+    path.setAttribute("data-series-id", s.id);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", colorMode === 'color' ? s.color : "#000000");
     path.setAttribute("stroke-width", strokeWidth);
@@ -106,7 +144,7 @@ function generateSVGElement(seriesList: ActiveSeries[]): SVGSVGElement {
     
     // Apply focus dimming if another series is focused
     if (focusedSeriesId !== null && s.id !== focusedSeriesId) {
-      path.setAttribute("opacity", "0.15");
+      path.setAttribute("opacity", "0.03");
     }
     
     svg.appendChild(path);
@@ -163,7 +201,7 @@ function downloadSVG(seriesList: ActiveSeries[], filenameNotation: string) {
     if (s.arcs.length === 0) continue;
     
     const isDimmed = focusedSeriesId !== null && s.id !== focusedSeriesId;
-    const opacityAttr = isDimmed ? ' opacity="0.15"' : '';
+    const opacityAttr = isDimmed ? ' opacity="0.03"' : '';
     
     pathElements += `  <path 
     d="${renderSVGPath(s.arcs)}" 
@@ -230,7 +268,6 @@ function getColorForIndex(index: number): string {
   // Base lightness is 45% to keep colors rich
   const baseLightness = 45;
   const lightness = Math.min(95, Math.max(10, baseLightness + shift));
-  
   return `hsl(${hue}, 75%, ${lightness}%)`;
 }
 
@@ -240,22 +277,109 @@ function init() {
   const statsEl = document.getElementById("stats-display") as HTMLDivElement;
   const errorEl = document.getElementById("error-display") as HTMLDivElement;
   const downloadEl = document.getElementById("download-btn") as HTMLButtonElement;
-  const seriesContainerEl = document.getElementById("series-container") as HTMLDivElement;
-  const addSeriesBtn = document.getElementById("add-series-btn") as HTMLButtonElement;
+  const textareaEl = document.getElementById("notation-textarea") as HTMLTextAreaElement;
+  const backdropEl = document.getElementById("notation-backdrop") as HTMLDivElement;
+  const legendContainerEl = document.getElementById("series-legend") as HTMLDivElement;
+
   const colorModeBtn = document.getElementById("color-mode-btn") as HTMLButtonElement;
 
-  // Initial state with one series (Seria A)
-  let seriesList: SeriesStateItem[] = [
-    {
-      id: "series_0",
-      notation: "1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l",
-      visible: true,
-      color: getColorForIndex(0)
-    }
-  ];
+  // Initial state with default Seria A loaded in the textarea
+  textareaEl.value = "1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
 
-  let seriesCounter = 1;
+
+  let lineVisibility: { [lineIndex: number]: boolean } = {};
   let currentActiveSeries: ActiveSeries[] = [];
+
+  let animationFrameId: number | null = null;
+  let animationStartTime: number | null = null;
+  let animatingPaths: { element: SVGPathElement; arcs: ArcSegment[] }[] = [];
+
+  function stopAnimation() {
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+    animationStartTime = null;
+    animatingPaths = [];
+  }
+
+  function startAnimation() {
+    stopAnimation();
+    if (currentActiveSeries.length === 0) return;
+
+    const svgEl = document.getElementById("curve-svg");
+    if (!svgEl) return;
+
+    const paths = svgEl.querySelectorAll("path");
+    paths.forEach(path => {
+      const seriesId = path.getAttribute("data-series-id");
+      if (seriesId) {
+        const series = currentActiveSeries.find(s => s.id === seriesId);
+        if (series) {
+          animatingPaths.push({
+            element: path as SVGPathElement,
+            arcs: series.arcs.map(arc => ({ ...arc }))
+          });
+        }
+      }
+    });
+
+    if (animatingPaths.length === 0) return;
+
+    animationStartTime = performance.now();
+    animationFrameId = requestAnimationFrame(animateFrame);
+  }
+
+  function animateFrame(timestamp: number) {
+    if (animationStartTime === null) return;
+    const elapsedSeconds = Math.max(0, (timestamp - animationStartTime) / 1000);
+
+    const maxSegments = animatingPaths.reduce((max, p) => Math.max(max, p.arcs.length), 0);
+    if (maxSegments === 0) {
+      stopAnimation();
+      return;
+    }
+
+    const t = Math.min(elapsedSeconds, maxSegments);
+
+    for (let i = 0; i < animatingPaths.length; i++) {
+      const item = animatingPaths[i];
+      const partialD = renderPartialSVGPath(item.arcs, [], t);
+      item.element.setAttribute("d", partialD);
+    }
+
+    if (t >= maxSegments) {
+      stopAnimation();
+    } else {
+      animationFrameId = requestAnimationFrame(animateFrame);
+    }
+  }
+
+  // Synchronize backdrop size with the textarea dynamically (handling user resizing)
+  if (typeof ResizeObserver !== "undefined") {
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        backdropEl.style.height = `${(entry.target as HTMLElement).offsetHeight}px`;
+        backdropEl.style.width = `${(entry.target as HTMLElement).offsetWidth}px`;
+      }
+    });
+    resizeObserver.observe(textareaEl);
+  }
+
+  // Synchronize scroll offsets
+  textareaEl.addEventListener("scroll", () => {
+    backdropEl.scrollTop = textareaEl.scrollTop;
+    backdropEl.scrollLeft = textareaEl.scrollLeft;
+  });
+
+  function escapeHTML(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
 
   function getEyeIcon(visible: boolean): string {
     if (visible) {
@@ -276,34 +400,115 @@ function init() {
   }
 
   function renderCurves() {
+    stopAnimation();
+    if (colorModeBtn) {
+      const span = colorModeBtn.querySelector("span");
+      if (span) {
+        span.textContent = colorMode === 'color' ? 'Kolor' : 'Mono';
+      }
+      if (colorMode === 'mono') {
+        colorModeBtn.classList.add('btn-mono');
+      } else {
+        colorModeBtn.classList.remove('btn-mono');
+      }
+    }
     errorEl.textContent = "";
     errorEl.classList.add("hidden");
 
-    const visibleSeriesList = seriesList.filter(s => s.visible && s.notation.trim().length > 0);
+    // Split the entire value by any whitespace sequence (spaces, newlines, tabs)
+    const blocks = textareaEl.value.split(/\s+/);
+    const parsedLines: ParsedLine[] = [];
+    let validCount = 0;
 
-    if (visibleSeriesList.length === 0) {
-      errorEl.textContent = "Wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l - Seria A";
+    for (let i = 0; i < blocks.length; i++) {
+      const blockText = blocks[i].trim();
+      if (blockText.length === 0) {
+        continue;
+      }
+
+      const modules = parseNotation(blockText);
+      if (modules.length === 0) {
+        continue;
+      }
+
+      const id = `block_${i}`;
+      const color = getColorForIndex(validCount);
+      validCount++;
+
+      // Reconstruct clean notation containing only valid parsed modules in uppercase (L/P)
+      const cleanNotation = modules.map(m => `${m.size}${m.direction.toUpperCase()}`).join("");
+
+      parsedLines.push({
+        id,
+        lineIndex: i,
+        notation: cleanNotation,
+        modules,
+        color
+      });
+    }
+
+    // Generate highlighted HTML for the backdrop
+    let hlCount = 0;
+    const escapedValue = escapeHTML(textareaEl.value);
+    const highlightedHTML = escapedValue.replace(/[^\s]+/g, (blockText) => {
+      const modules = parseNotation(blockText);
+      if (modules.length === 0) {
+        return blockText; // Unhighlighted text
+      }
+
+      const color = getColorForIndex(hlCount);
+      hlCount++;
+
+      const regex = /(\d+)([lLpP])/g;
+      return blockText.replace(regex, (match, sizeStr, dir) => {
+        const size = parseInt(sizeStr, 10);
+        const upperDir = dir.toUpperCase();
+
+        const isInvalid = size < 1 || size > 32;
+        if (isInvalid) {
+          return `<span class="hl-parsed" style="font-weight: bold; text-decoration: underline wavy var(--error-color);">${size}${upperDir}</span>`;
+        }
+
+        return `<span class="hl-parsed" style="color: ${colorMode === 'color' ? color : 'var(--text-primary)'}; font-weight: bold;">${size}${upperDir}</span>`;
+      });
+    });
+
+    backdropEl.innerHTML = highlightedHTML + (highlightedHTML.endsWith('\n') ? ' ' : '');
+
+    // Auto-clean focusedSeriesId if that block is no longer present/valid
+    if (focusedSeriesId !== null) {
+      const stillExists = parsedLines.some(p => p.id === focusedSeriesId);
+      if (!stillExists) {
+        focusedSeriesId = null;
+      }
+    }
+
+    if (parsedLines.length === 0) {
+      errorEl.textContent = "Wklej lub wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
       errorEl.classList.remove("hidden");
       containerEl.innerHTML = "";
       statsEl.textContent = "Łuki: 0";
       downloadEl.disabled = true;
       currentActiveSeries = [];
+      renderLegend([]);
       return;
     }
 
     const activeSeries: ActiveSeries[] = [];
-    let parsingError = false;
     let totalArcs = 0;
+    let hasError = false;
 
-    for (const item of visibleSeriesList) {
-      const modules = parseNotation(item.notation);
-      if (modules.length === 0) {
-        parsingError = true;
+    for (const item of parsedLines) {
+      if (lineVisibility[item.lineIndex] === undefined) {
+        lineVisibility[item.lineIndex] = true; // Default to visible
+      }
+
+      if (!lineVisibility[item.lineIndex]) {
         continue;
       }
 
       try {
-        const arcs = generateArcs(modules);
+        const arcs = generateArcs(item.modules);
         totalArcs += arcs.length;
         activeSeries.push({
           id: item.id,
@@ -312,23 +517,18 @@ function init() {
           notation: item.notation
         });
       } catch (err: any) {
-        errorEl.textContent = `Błąd generowania: ${err.message}`;
+        errorEl.textContent = `Błąd generowania w serii "${item.notation}": ${err.message}`;
         errorEl.classList.remove("hidden");
-        containerEl.innerHTML = "";
-        statsEl.textContent = "Łuki: 0";
-        downloadEl.disabled = true;
-        currentActiveSeries = [];
-        return;
+        hasError = true;
       }
     }
 
-    if (parsingError && activeSeries.length === 0) {
-      errorEl.textContent = "Błąd: Nie znaleziono poprawnych modułów w notacji. Użyj formatu [rozmiar][L/P] (np. 1p12p3l).";
-      errorEl.classList.remove("hidden");
+    if (hasError && activeSeries.length === 0) {
       containerEl.innerHTML = "";
       statsEl.textContent = "Łuki: 0";
       downloadEl.disabled = true;
       currentActiveSeries = [];
+      renderLegend(parsedLines);
       return;
     }
 
@@ -341,7 +541,7 @@ function init() {
 
       statsEl.textContent = `Łuki: ${totalArcs}`;
 
-      // Check if all active series' notations end with a direction letter
+      // Disable download if any visible active series ends with incomplete module sizes/letters
       const allComplete = activeSeries.every(s => /[lLpP]/.test(s.notation.trim().slice(-1)));
       downloadEl.disabled = !allComplete;
     } catch (err: any) {
@@ -352,231 +552,153 @@ function init() {
       downloadEl.disabled = true;
       currentActiveSeries = [];
     }
+
+    renderLegend(parsedLines);
   }
 
-  function createSeriesRowDOM(item: SeriesStateItem): HTMLDivElement {
-    const row = document.createElement("div");
-    row.className = "series-row";
-    row.dataset.id = item.id;
-
-    // 1. Input wrapper (Left side)
-    const wrapper = document.createElement("div");
-    wrapper.className = "input-wrapper";
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = "Wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l - Seria A";
-    input.value = item.notation;
-    input.spellcheck = false;
-    input.autocomplete = "off";
-
-    input.addEventListener("input", () => {
-      const start = input.selectionStart;
-      const originalValue = input.value;
-
-      /**
-       * State-machine filter: accepts [digits+][L/P] pairs of any digit length.
-       * State 'digit'  — expecting one or more digits (size)
-       * State 'letter' — at least one digit seen, now accepting L/P to close module
-       *                   (still accepts more digits while in this state so typing works naturally)
-       */
-      function filterNotation(raw: string): string {
-        let result = "";
-        let state: 'digit' | 'letter' = 'digit'; // start expecting a number
-        let pendingDigits = "";
-
-        for (const char of raw) {
-          if (/\d/.test(char)) {
-            // Always accumulate digits
-            pendingDigits += char;
-            state = 'letter'; // once we have digits, next valid char is a letter
-          } else if (/[lLpP]/.test(char)) {
-            if (pendingDigits.length > 0) {
-              // Complete the module: flush digits + direction
-              result += pendingDigits + char;
-              pendingDigits = "";
-              state = 'digit';
-            }
-            // If no digits before the letter, drop it
-          }
-          // Any other character is silently ignored
-        }
-        // Trailing incomplete digits (no direction yet) are kept in the field
-        // so the user can continue typing without losing them
-        result += pendingDigits;
-        return result;
-      }
-
-      const filteredValue = filterNotation(originalValue);
-
-      if (originalValue !== filteredValue) {
-        input.value = filteredValue;
-        // Recalculate cursor position relative to the filtered string
-        if (start !== null) {
-          const prefix = originalValue.substring(0, start);
-          const filteredPrefix = filterNotation(prefix);
-          const cursorPosition = filteredPrefix.length;
-          input.setSelectionRange(cursorPosition, cursorPosition);
-        }
-      }
-
-      item.notation = input.value.trim();
-      renderCurves();
+  function mirrorNotationString(text: string): string {
+    return text.replace(/[lLpP]/g, (char) => {
+      if (char === 'l') return 'p';
+      if (char === 'L') return 'P';
+      if (char === 'p') return 'l';
+      if (char === 'P') return 'L';
+      return char;
     });
+  }
 
-    wrapper.appendChild(input);
-    row.appendChild(wrapper);
-
-    // 2. Color badge (Right of text field)
-    const badge = document.createElement("div");
-    badge.className = "color-badge";
-    badge.style.backgroundColor = item.color;
-    row.appendChild(badge);
-
-    // 3. Visibility button
-    const visibilityBtn = document.createElement("button");
-    visibilityBtn.className = "btn-icon";
-    visibilityBtn.title = "Włącz/Wyłącz widoczność";
-    visibilityBtn.innerHTML = getEyeIcon(item.visible);
-    visibilityBtn.addEventListener("click", () => {
-      item.visible = !item.visible;
-      visibilityBtn.innerHTML = getEyeIcon(item.visible);
-
-      // If we just hid the focused series, clear the focus
-      if (!item.visible && focusedSeriesId === item.id) {
-        focusedSeriesId = null;
-        // Reset all focus buttons to inactive
-        const allFocusButtons = seriesContainerEl.querySelectorAll(".focus-btn");
-        allFocusButtons.forEach(btn => btn.classList.remove("active"));
-      }
-
+  function mirrorBlockInTextarea(blockIndex: number) {
+    const text = textareaEl.value;
+    const words = text.split(/(\s+)/);
+    if (blockIndex * 2 < words.length) {
+      words[blockIndex * 2] = mirrorNotationString(words[blockIndex * 2]);
+      
+      const start = textareaEl.selectionStart;
+      const end = textareaEl.selectionEnd;
+      
+      textareaEl.value = words.join("");
+      
+      textareaEl.setSelectionRange(start, end);
       renderCurves();
-    });
-
-    // 4. Focus button (loupe icon)
-    const focusBtn = document.createElement("button");
-    focusBtn.className = "btn-icon focus-btn";
-    if (focusedSeriesId === item.id) {
-      focusBtn.classList.add("active");
     }
-    focusBtn.title = "Skup się na tej serii (wycisz inne)";
-    focusBtn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-    `;
-    focusBtn.addEventListener("click", () => {
-      if (focusedSeriesId === item.id) {
-        focusedSeriesId = null;
-      } else {
-        focusedSeriesId = item.id;
-        // Auto-show the series if it was hidden
-        if (!item.visible) {
-          item.visible = true;
-          visibilityBtn.innerHTML = getEyeIcon(true);
-        }
-      }
+  }
 
-      // Update all focus button active states visually
-      const allFocusButtons = seriesContainerEl.querySelectorAll(".focus-btn");
-      allFocusButtons.forEach((btn, idx) => {
-        const rowId = seriesList[idx].id;
-        if (rowId === focusedSeriesId) {
-          btn.classList.add("active");
-        } else {
-          btn.classList.remove("active");
-        }
+  function renderLegend(parsedLines: ParsedLine[]) {
+    legendContainerEl.innerHTML = "";
+
+    parsedLines.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "series-legend-row";
+      row.dataset.id = item.id;
+
+      // 1. Info container (Number + label)
+      const info = document.createElement("div");
+      info.className = "series-legend-info";
+      info.style.color = colorMode === 'color' ? item.color : "var(--text-primary)";
+
+      const numSpan = document.createElement("span");
+      numSpan.className = "series-legend-num";
+      numSpan.textContent = `Seria ${idx + 1}:`;
+      numSpan.title = "Kliknij, aby skopiować notację tej serii";
+      
+      numSpan.addEventListener("click", () => {
+        navigator.clipboard.writeText(item.notation).then(() => {
+          const originalText = numSpan.textContent;
+          numSpan.textContent = "Skopiowano!";
+          numSpan.style.color = "var(--success-color, #16a34a)";
+          setTimeout(() => {
+            numSpan.textContent = originalText;
+            numSpan.style.color = "";
+          }, 1000);
+        }).catch(err => {
+          console.error("Copy failed: ", err);
+        });
       });
 
-      renderCurves();
+      const parsedSpan = document.createElement("span");
+      parsedSpan.className = "series-legend-parsed";
+      parsedSpan.textContent = item.notation;
+
+      info.appendChild(numSpan);
+      info.appendChild(parsedSpan);
+      row.appendChild(info);
+
+      // 2. Mirror button (placed to the left of focus button)
+      const mirrorBtn = document.createElement("button");
+      mirrorBtn.className = "btn-icon";
+      mirrorBtn.title = "Odbicie lustrzane (zamień L ↔ P)";
+      mirrorBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="3"></line>
+          <polyline points="8 6 4 10 8 14"></polyline>
+          <polyline points="16 6 20 10 16 14"></polyline>
+        </svg>
+      `;
+      mirrorBtn.addEventListener("click", () => {
+        mirrorBlockInTextarea(item.lineIndex);
+      });
+      row.appendChild(mirrorBtn);
+
+      // 3. Focus button (loupe)
+      const focusBtn = document.createElement("button");
+      focusBtn.className = "btn-icon focus-btn";
+      if (focusedSeriesId === item.id) {
+        focusBtn.classList.add("active");
+      }
+      focusBtn.title = "Skup się na tej serii (wycisz inne)";
+      focusBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      `;
+      focusBtn.addEventListener("click", () => {
+        if (focusedSeriesId === item.id) {
+          focusedSeriesId = null;
+        } else {
+          focusedSeriesId = item.id;
+          lineVisibility[item.lineIndex] = true;
+        }
+        renderCurves();
+      });
+      row.appendChild(focusBtn);
+
+      // 4. Visibility button (eye)
+      const visibilityBtn = document.createElement("button");
+      visibilityBtn.className = "btn-icon";
+      visibilityBtn.title = "Włącz/Wyłącz widoczność";
+      const isVisible = lineVisibility[item.lineIndex] !== false;
+      visibilityBtn.innerHTML = getEyeIcon(isVisible);
+      visibilityBtn.addEventListener("click", () => {
+        const nextVisible = !isVisible;
+        lineVisibility[item.lineIndex] = nextVisible;
+
+        if (!nextVisible && focusedSeriesId === item.id) {
+          focusedSeriesId = null;
+        }
+        renderCurves();
+      });
+      row.appendChild(visibilityBtn);
+
+      legendContainerEl.appendChild(row);
     });
-
-    row.appendChild(focusBtn);
-    row.appendChild(visibilityBtn);
-
-    // 5. Delete button
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "btn-icon";
-    deleteBtn.title = "Usuń serię";
-    deleteBtn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    `;
-    deleteBtn.addEventListener("click", () => {
-      removeSeries(item.id);
-    });
-    row.appendChild(deleteBtn);
-
-    return row;
-  }
-
-  function refreshSeriesUI() {
-    seriesContainerEl.innerHTML = "";
-    seriesList.forEach((item) => {
-      const row = createSeriesRowDOM(item);
-      seriesContainerEl.appendChild(row);
-    });
-
-    // Disable delete buttons if only 1 row remains
-    const deleteButtons = seriesContainerEl.querySelectorAll(".btn-icon:last-child") as NodeListOf<HTMLButtonElement>;
-    if (seriesList.length === 1 && deleteButtons.length === 1) {
-      deleteButtons[0].disabled = true;
-    }
-  }
-
-  function addSeries() {
-    const nextIndex = seriesList.length;
-    const newId = `series_${Date.now()}_${seriesCounter}`;
-    const nextColor = getColorForIndex(seriesCounter);
-    seriesCounter++;
-
-    seriesList.push({
-      id: newId,
-      notation: "",
-      visible: true,
-      color: nextColor
-    });
-
-    refreshSeriesUI();
-    renderCurves();
-
-    // Focus the newly added input
-    const inputs = seriesContainerEl.querySelectorAll("input[type='text']") as NodeListOf<HTMLInputElement>;
-    if (inputs.length > 0) {
-      inputs[inputs.length - 1].focus();
-    }
-  }
-
-  function removeSeries(id: string) {
-    if (seriesList.length <= 1) return;
-    if (focusedSeriesId === id) {
-      focusedSeriesId = null;
-    }
-    seriesList = seriesList.filter(s => s.id !== id);
-    refreshSeriesUI();
-    renderCurves();
   }
 
   // Event Listeners
-  addSeriesBtn.addEventListener("click", addSeries);
-
-  colorModeBtn.addEventListener("click", () => {
-    colorMode = colorMode === 'color' ? 'mono' : 'color';
-    colorModeBtn.querySelector("span")!.textContent = colorMode === 'color' ? "Kolor" : "Mono";
-    
-    if (colorMode === 'mono') {
-      colorModeBtn.classList.add("btn-primary");
-      colorModeBtn.classList.remove("btn-secondary");
-    } else {
-      colorModeBtn.classList.add("btn-secondary");
-      colorModeBtn.classList.remove("btn-primary");
-    }
-    
-    renderCurves();
+  textareaEl.addEventListener("input", renderCurves);
+  textareaEl.addEventListener("paste", () => {
+    setTimeout(renderCurves, 0);
   });
+
+  containerEl.addEventListener("click", () => {
+    startAnimation();
+  });
+
+  if (colorModeBtn) {
+    colorModeBtn.addEventListener("click", () => {
+      colorMode = colorMode === 'color' ? 'mono' : 'color';
+      renderCurves();
+    });
+  }
 
   downloadEl.addEventListener("click", () => {
     if (currentActiveSeries.length > 0) {
@@ -588,9 +710,315 @@ function init() {
     }
   });
 
+  // Prevent browser default drop behavior globally so it doesn't open the file,
+  // but preserve default drag-and-drop on the textarea.
+  window.addEventListener("dragover", (e) => {
+    e.preventDefault();
+  }, false);
+
+  window.addEventListener("drop", (e) => {
+    if (e.target !== textareaEl) {
+      e.preventDefault();
+    }
+  }, false);
+
+  // Drag and drop .txt files onto the curve preview area
+  const dragOverlay = document.getElementById("drag-overlay") as HTMLDivElement;
+  let dragCounter = 0;
+
+  containerEl.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    dragCounter++;
+    if (dragOverlay) {
+      dragOverlay.classList.remove("hidden");
+    }
+  });
+
+  containerEl.addEventListener("dragover", (e) => {
+    e.preventDefault();
+  });
+
+  containerEl.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0 && dragOverlay) {
+      dragCounter = 0;
+      dragOverlay.classList.add("hidden");
+    }
+  });
+
+  containerEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    if (dragOverlay) {
+      dragOverlay.classList.add("hidden");
+    }
+
+    if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      // Try to read all dropped files as text (more resilient on Linux filesystems)
+      if (files.length > 0) {
+        const filePromises = files.map(file => {
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              resolve(event.target?.result as string || '');
+            };
+            reader.readAsText(file);
+          });
+        });
+
+        Promise.all(filePromises).then((contents) => {
+          const joinedText = contents
+            .map(c => c.trim())
+            .filter(c => c.length > 0)
+            .join("\n");
+
+          if (joinedText.length > 0) {
+            textareaEl.value = joinedText;
+            renderCurves();
+            startAnimation();
+          }
+        });
+      }
+    }
+  });
+
+  // Saved Curves Library Logic
+  const libraryBtn = document.getElementById("library-btn") as HTMLButtonElement;
+  const libraryModal = document.getElementById("library-modal") as HTMLDivElement;
+  const modalCloseBtn = document.getElementById("modal-close-btn") as HTMLButtonElement;
+  const saveLayoutBtn = document.getElementById("save-layout-btn") as HTMLButtonElement;
+  const saveLayoutNameInput = document.getElementById("save-layout-name") as HTMLInputElement;
+  const saveErrorEl = document.getElementById("save-error") as HTMLDivElement;
+  const savedLayoutsListEl = document.getElementById("saved-layouts-list") as HTMLDivElement;
+  const importLayoutsBtn = document.getElementById("import-layouts-btn") as HTMLButtonElement;
+
+  const STORAGE_KEY = "bosacki_saved_layouts";
+
+  interface SavedLayout {
+    id: string;
+    name: string;
+    notation: string;
+    timestamp: number;
+  }
+
+  function loadSavedLayouts(): SavedLayout[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error("Failed to load saved layouts:", e);
+      return [];
+    }
+  }
+
+  function saveSavedLayouts(layouts: SavedLayout[]) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+    } catch (e) {
+      console.error("Failed to save layouts to storage:", e);
+    }
+  }
+
+  function openLibraryModal() {
+    if (libraryModal) {
+      libraryModal.classList.remove("hidden");
+      saveLayoutNameInput.value = "";
+      saveErrorEl.textContent = "";
+      saveErrorEl.classList.add("hidden");
+      refreshLibraryList();
+    }
+  }
+
+  function closeLibraryModal() {
+    if (libraryModal) {
+      libraryModal.classList.add("hidden");
+    }
+  }
+
+  function refreshLibraryList() {
+    if (!savedLayoutsListEl) return;
+    savedLayoutsListEl.innerHTML = "";
+    
+    const layouts = loadSavedLayouts();
+    if (layouts.length === 0) {
+      const emptyDiv = document.createElement("div");
+      emptyDiv.className = "layouts-list-empty";
+      emptyDiv.textContent = "Brak zapisanych układów w bibliotece.";
+      savedLayoutsListEl.appendChild(emptyDiv);
+      importLayoutsBtn.disabled = true;
+      return;
+    }
+
+    // Sort by timestamp descending (newest first)
+    layouts.sort((a, b) => b.timestamp - a.timestamp);
+
+    layouts.forEach(layout => {
+      const row = document.createElement("div");
+      row.className = "layout-item-row";
+      row.dataset.id = layout.id;
+
+      // Checkbox
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "layout-checkbox";
+      checkbox.addEventListener("change", updateImportButtonState);
+
+      // Info block (clickable to toggle checkbox)
+      const info = document.createElement("div");
+      info.className = "layout-item-info";
+      info.addEventListener("click", () => {
+        checkbox.checked = !checkbox.checked;
+        updateImportButtonState();
+      });
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "layout-item-name";
+      nameSpan.textContent = layout.name;
+
+      const previewSpan = document.createElement("span");
+      previewSpan.className = "layout-item-preview";
+      previewSpan.textContent = layout.notation;
+
+      info.appendChild(nameSpan);
+      info.appendChild(previewSpan);
+
+      // Delete Button
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-icon";
+      deleteBtn.title = "Usuń z biblioteki";
+      deleteBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      `;
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Avoid triggering info click/checkbox toggle
+        if (confirm(`Czy na pewno chcesz usunąć układ "${layout.name}"?`)) {
+          const currentLayouts = loadSavedLayouts();
+          const filtered = currentLayouts.filter(l => l.id !== layout.id);
+          saveSavedLayouts(filtered);
+          refreshLibraryList();
+        }
+      });
+
+      row.appendChild(checkbox);
+      row.appendChild(info);
+      row.appendChild(deleteBtn);
+
+      savedLayoutsListEl.appendChild(row);
+    });
+
+    updateImportButtonState();
+  }
+
+  function updateImportButtonState() {
+    const checkboxes = savedLayoutsListEl.querySelectorAll(".layout-checkbox") as NodeListOf<HTMLInputElement>;
+    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+    importLayoutsBtn.disabled = !anyChecked;
+  }
+
+  if (libraryBtn) {
+    libraryBtn.addEventListener("click", openLibraryModal);
+  }
+
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener("click", closeLibraryModal);
+  }
+
+  if (libraryModal) {
+    libraryModal.addEventListener("click", (e) => {
+      if (e.target === libraryModal) {
+        closeLibraryModal();
+      }
+    });
+  }
+
+  if (saveLayoutBtn) {
+    saveLayoutBtn.addEventListener("click", () => {
+      saveErrorEl.textContent = "";
+      saveErrorEl.classList.add("hidden");
+
+      const name = saveLayoutNameInput.value.trim();
+      if (!name) {
+        saveErrorEl.textContent = "Podaj nazwę układu.";
+        saveErrorEl.classList.remove("hidden");
+        return;
+      }
+
+      const notation = textareaEl.value.trim();
+      if (!notation) {
+        saveErrorEl.textContent = "Pole notacji jest puste. Wpisz coś przed zapisaniem.";
+        saveErrorEl.classList.remove("hidden");
+        return;
+      }
+
+      const layouts = loadSavedLayouts();
+      
+      const exists = layouts.some(l => l.name.toLowerCase() === name.toLowerCase());
+      if (exists) {
+        if (!confirm(`Układ o nazwie "${name}" już istnieje w bibliotece. Czy chcesz go zastąpić?`)) {
+          return;
+        }
+      }
+
+      const filteredLayouts = layouts.filter(l => l.name.toLowerCase() !== name.toLowerCase());
+      filteredLayouts.push({
+        id: `layout_${Date.now()}`,
+        name,
+        notation,
+        timestamp: Date.now()
+      });
+
+      saveSavedLayouts(filteredLayouts);
+      saveLayoutNameInput.value = "";
+      refreshLibraryList();
+    });
+  }
+
+  if (importLayoutsBtn) {
+    importLayoutsBtn.addEventListener("click", () => {
+      const checkedRows = savedLayoutsListEl.querySelectorAll(".layout-item-row") as NodeListOf<HTMLDivElement>;
+      const selectedLayouts: SavedLayout[] = [];
+      const layouts = loadSavedLayouts();
+
+      checkedRows.forEach(row => {
+        const checkbox = row.querySelector(".layout-checkbox") as HTMLInputElement;
+        if (checkbox && checkbox.checked) {
+          const id = row.dataset.id;
+          const layout = layouts.find(l => l.id === id);
+          if (layout) {
+            selectedLayouts.push(layout);
+          }
+        }
+      });
+
+      if (selectedLayouts.length > 0) {
+        // Reverse them so they are appended in chronological order (oldest first)
+        selectedLayouts.reverse();
+        
+        const joinedNotations = selectedLayouts
+          .map(l => l.notation.trim())
+          .filter(n => n.length > 0)
+          .join("\n");
+
+        if (joinedNotations.length > 0) {
+          textareaEl.value = joinedNotations;
+          renderCurves();
+          closeLibraryModal();
+          startAnimation();
+        }
+      }
+    });
+  }
+
   // Initial load
-  refreshSeriesUI();
   renderCurves();
+  startAnimation();
 }
 
 // Execute initialization safely depending on page load state

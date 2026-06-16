@@ -21,6 +21,9 @@ interface ArcSegment {
   largeArc: 0;
   direction: 'L' | 'P';
   size: number;
+  cx: number;
+  cy: number;
+  startAngle: number;
 }
 
 const PHI = (1 + Math.sqrt(5)) / 2; // Golden Ratio
@@ -52,6 +55,12 @@ function generateArcs(modules: Module[]): ArcSegment[] {
   const arcs: ArcSegment[] = [];
 
   for (const mod of modules) {
+    if (mod.size < 1) {
+      throw new Error(`Rozmiar modułu (${mod.size}) musi wynosić co najmniej 1.`);
+    }
+    if (mod.size > 32) {
+      throw new Error(`Rozmiar modułu (${mod.size}) przekracza limit 32 (wielkość rośnie wykładniczo).`);
+    }
     const radius = Math.pow(PHI, mod.size);
     const turnRight = mod.direction === 'P';
     const s = turnRight ? 1 : -1;
@@ -76,7 +85,10 @@ function generateArcs(modules: Module[]): ArcSegment[] {
       sweep: turnRight ? 1 : 0,
       largeArc: 0,
       direction: mod.direction,
-      size: mod.size
+      size: mod.size,
+      cx,
+      cy,
+      startAngle: state.angle
     });
 
     state = { x: endX, y: endY, angle: newAngle };
