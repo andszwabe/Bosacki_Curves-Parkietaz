@@ -5,7 +5,7 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outFile": "./dist/app.js"
+    "outFile": "./dist/engine.js"
   },
-  "include": ["src/**/*"]
+  "include": ["src/engine.ts"]
 }

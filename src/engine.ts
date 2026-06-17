@@ -1,5 +1,7 @@
 // Geometric Engine for Piotr Bosacki's Curves (Parkietaż)
 
+type TransformationType = 'O' | 'I' | 'R' | 'RI'; // Oryginał, Inwersja, Rak, Inwersja Raka
+
 interface Module {
   size: number;
   direction: 'L' | 'P';
@@ -49,7 +51,7 @@ function parseNotation(notation: string): Module[] {
  * Generates a sequence of quarter-circle arc segments from modules using turtle graphics math.
  * Invariant: 1p1p1p1p produces a perfect circle closing back to start.
  */
-function generateArcs(modules: Module[]): ArcSegment[] {
+function generateArcs(modules: Module[], scale: number = 1): ArcSegment[] {
   // Start turtle at (0, 0) facing UP (Math.PI / 2) to align with reference SVG chirality
   let state: TurtleState = { x: 0, y: 0, angle: Math.PI / 2 };
   const arcs: ArcSegment[] = [];
@@ -61,7 +63,7 @@ function generateArcs(modules: Module[]): ArcSegment[] {
     if (mod.size > 32) {
       throw new Error(`Rozmiar modułu (${mod.size}) przekracza limit 32 (wielkość rośnie wykładniczo).`);
     }
-    const radius = Math.pow(PHI, mod.size);
+    const radius = scale * Math.pow(PHI, mod.size);
     const turnRight = mod.direction === 'P';
     const s = turnRight ? 1 : -1;
 
@@ -96,3 +98,21 @@ function generateArcs(modules: Module[]): ArcSegment[] {
 
   return arcs;
 }
+
+/**
+ * Applies serial transformations to the list of modules.
+ */
+function applyTransformation(modules: Module[], type: TransformationType): Module[] {
+  switch (type) {
+    case 'I':
+      return modules.map(m => ({ ...m, direction: m.direction === 'P' ? 'L' : 'P' }));
+    case 'R':
+      return modules.slice().reverse();
+    case 'RI':
+      return modules.slice().reverse().map(m => ({ ...m, direction: m.direction === 'P' ? 'L' : 'P' }));
+    case 'O':
+    default:
+      return modules.map(m => ({ ...m })); // return a shallow copy
+  }
+}
+
