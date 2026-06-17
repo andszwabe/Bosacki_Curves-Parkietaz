@@ -57,6 +57,43 @@ parkietaz-app/          ← this repo (git-tracked)
 - **Antigravity IDE** runs locally on P1.
 - **GitHub:** andszwabe/Bosacki_Curves-Parkietaz (private)
 
+## Build & Deployment (IMPORTANT)
+
+### Source vs. generated files
+
+- **Sources to edit:** `src/index.html`, `style.css`, `src/engine.ts`, `src/renderer.ts`
+- **Generated (do not hand-edit):** `index.html` at the repo root — produced by `scripts/inline.js` from the sources above. It's the self-contained file served to users.
+- `dist/` (TypeScript output) and `node_modules/` are gitignored.
+
+### Build command
+
+```bash
+npm install   # once
+npm run build # runs `tsc` then inlines into root index.html
+```
+
+### Deployment (GitHub Actions, automatic)
+
+- Pages source is configured to **"GitHub Actions"** (NOT "Deploy from a branch").
+- Workflow: `.github/workflows/deploy.yml`
+- On every push to `main`, the workflow:
+  1. Checks out the repo
+  2. Runs `npm ci` and `npm run build`
+  3. Uploads the whole repo as a Pages artifact
+  4. Deploys to https://andszwabe.github.io/Bosacki_Curves-Parkietaz/
+- `.nojekyll` is present at the repo root so Pages skips Jekyll. Do not remove it.
+
+### Implications for agents
+
+- You can edit only `src/` files and push — the live site rebuilds automatically. No need to run `npm run build` before pushing.
+- The committed root `index.html` is still useful for opening locally without a build step. Run `npm run build` before committing if you want it to reflect current sources, but the deployed version always comes from a fresh CI build, not from whatever `index.html` happens to be committed.
+- If a Pages deployment fails, check https://github.com/andszwabe/Bosacki_Curves-Parkietaz/actions for the error.
+
+### Branching workflow
+
+- `main` — production branch. Pushes auto-deploy.
+- `dev` — work-in-progress. Merge into `main` with `--no-ff` to release. Tag releases as `vX.Y` (e.g. `v1.2`).
+
 ## Reference
 
 - Source PDF: `../input/Bosacki_objasnienie-parkietazu.pdf`
