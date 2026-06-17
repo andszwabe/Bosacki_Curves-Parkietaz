@@ -939,7 +939,7 @@ function init() {
   }
 
   if (saveLayoutBtn) {
-    saveLayoutBtn.addEventListener("click", () => {
+    const submitSaveLayout = () => {
       saveErrorEl.textContent = "";
       saveErrorEl.classList.add("hidden");
 
@@ -977,7 +977,18 @@ function init() {
       saveSavedLayouts(filteredLayouts);
       saveLayoutNameInput.value = "";
       refreshLibraryList();
-    });
+    };
+
+    saveLayoutBtn.addEventListener("click", submitSaveLayout);
+
+    if (saveLayoutNameInput) {
+      saveLayoutNameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitSaveLayout();
+        }
+      });
+    }
   }
 
   if (importLayoutsBtn) {
