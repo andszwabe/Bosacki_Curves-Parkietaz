@@ -72,22 +72,35 @@ npm install   # once
 npm run build # runs `tsc` then inlines into root index.html
 ```
 
-### Deployment (GitHub Actions, automatic)
+### Deployment (GitHub Pages, "Deploy from a branch")
 
-- Pages source is configured to **"GitHub Actions"** (NOT "Deploy from a branch").
-- Workflow: `.github/workflows/deploy.yml`
-- On every push to `main`, the workflow:
-  1. Checks out the repo
-  2. Runs `npm ci` and `npm run build`
-  3. Uploads the whole repo as a Pages artifact
-  4. Deploys to https://andszwabe.github.io/Bosacki_Curves-Parkietaz/
+- Pages source is configured to **"Deploy from a branch"** → `main` → `/` (root).
+- There is **no GitHub Actions workflow**. Deployment is just GitHub serving the
+  committed root `index.html` directly.
 - `.nojekyll` is present at the repo root so Pages skips Jekyll. Do not remove it.
 
-### Implications for agents
+### Implications for agents (READ THIS)
 
-- You can edit only `src/` files and push — the live site rebuilds automatically. No need to run `npm run build` before pushing.
-- The committed root `index.html` is still useful for opening locally without a build step. Run `npm run build` before committing if you want it to reflect current sources, but the deployed version always comes from a fresh CI build, not from whatever `index.html` happens to be committed.
-- If a Pages deployment fails, check https://github.com/andszwabe/Bosacki_Curves-Parkietaz/actions for the error.
+- **You MUST run `npm run build` before pushing to `main`** if you changed any
+  source file (`src/index.html`, `src/engine.ts`, `src/renderer.ts`, `style.css`).
+  Otherwise the deployed site will not reflect your changes — only the committed
+  root `index.html` is served.
+- Working flow on `dev`:
+  1. Edit `src/` files
+  2. `npm run build` — regenerates root `index.html`
+  3. Commit including the regenerated `index.html`
+  4. When ready to release, merge `dev` into `main` with `--no-ff` and push
+- If a deployment doesn't appear after ~2 minutes, check
+  https://github.com/andszwabe/Bosacki_Curves-Parkietaz/actions for any
+  `pages build and deployment` failures.
+
+### Note on Actions / auto-build
+
+A previous attempt (Jun 17, 2026) added a GitHub Actions workflow to auto-build
+on push, but the account billing system kept the workflow locked even though
+the repo is public and free. We reverted to plain "Deploy from a branch" which
+worked reliably for v1.0–v1.1.1. Do not reintroduce Actions without first
+confirming billing is unlocked.
 
 ### Branching workflow
 

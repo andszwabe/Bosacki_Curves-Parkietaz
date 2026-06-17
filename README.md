@@ -35,20 +35,24 @@ npm run watch    # tsc only — re-run `npm run build` to regenerate index.html
 
 ## Deployment
 
-Deployment is automated via GitHub Actions (`.github/workflows/deploy.yml`):
+GitHub Pages is configured as **"Deploy from a branch"** — `main` branch, root folder.
 
-1. Push to `main` → workflow runs `npm ci` and `npm run build` on a fresh runner
-2. The whole repo (with the freshly built `index.html`) is uploaded as a Pages artifact
-3. GitHub Pages publishes it to https://andszwabe.github.io/Bosacki_Curves-Parkietaz/
+Workflow:
 
-You no longer need to commit a freshly built `index.html` yourself — just edit
-sources, push, and the Action rebuilds and redeploys.
+1. Edit source files in `src/`.
+2. Run `npm run build` to regenerate the root `index.html` from sources.
+3. Commit and push to `main`.
+4. Pages picks up the new `index.html` within ~1 minute and serves it at
+   https://andszwabe.github.io/Bosacki_Curves-Parkietaz/
 
-The committed `index.html` at the repo root remains useful for opening the app
-directly from the filesystem without a build step. Run `npm run build` before
-committing if you want it to reflect your latest source changes.
+`.nojekyll` at the repo root tells Pages to skip Jekyll processing and serve
+files as-is. Do not remove it.
+
+> **Important:** If you forget to run `npm run build` before pushing, the live
+> site will not reflect your `src/` changes. The deployed file is the committed
+> root `index.html`, not the source TypeScript / src HTML.
 
 ## Branching
 
-- `main` — production. Auto-deploys to GitHub Pages on push.
+- `main` — production. Pushes auto-deploy via GitHub Pages.
 - `dev` — work-in-progress. Merge into `main` with `--no-ff` to release.
