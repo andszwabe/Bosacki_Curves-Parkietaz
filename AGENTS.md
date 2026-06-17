@@ -18,7 +18,7 @@ NEVER use "R" for right. The original Bosacki Python code uses "L"/"R" — we tr
 ### Terminology (Polish originals — do not translate)
 
 - **Parkietaż** — the tiling/parquetry system
-- **Moduł** — a quarter-circle arc module (sizes 1–7)
+- **Moduł** — a quarter-circle arc module (sizes 1–32; original Bosacki spec used 1–7, app extended in v1.1.1)
 - **Skrętność** — chirality/direction of the arc (L or P)
 - **Wąż** — "snake" = a sequence of connected modules
 - **Seria** — a specific snake built from rules (A through G)
