@@ -59,18 +59,27 @@ parkietaz-app/          ← this repo (git-tracked)
 
 ## Build & Deployment (IMPORTANT)
 
-### Source vs. generated files
+### Hybrid architecture (since v1.3 prep, 2026-06-17)
 
-- **Sources to edit:** `src/index.html`, `style.css`, `src/engine.ts`, `src/renderer.ts`
-- **Generated (do not hand-edit):** `index.html` at the repo root — produced by `scripts/inline.js` from the sources above. It's the self-contained file served to users.
-- `dist/` (TypeScript output) and `node_modules/` are gitignored.
+The project uses a **hybrid** model:
 
-### Build command
+- `index.html` (repo root) is the **single source of truth for UI**: HTML, CSS,
+  and all UI/rendering JavaScript live inline in this one file. Edit it directly.
+- `src/engine.ts` is the **TypeScript source** for the curve math: `parseNotation`,
+  `generateArcs`, `applyTransformation`, and supporting types. It is compiled by
+  `tsc` into `dist/engine.js` and inlined into `index.html` between the markers
+  `// ENGINE_START` and `// ENGINE_END` by `scripts/inline.js`.
+- `dist/` and `node_modules/` are gitignored.
 
-```bash
-npm install   # once
-npm run build # runs `tsc` then inlines into root index.html
-```
+### When to run `npm run build`
+
+- **Only if you changed `src/engine.ts`.** The build step compiles TS → JS and
+  re-inlines it into `index.html`. The script is idempotent — running it multiple
+  times gives the same result.
+- For any other change (HTML structure, CSS, UI JavaScript, modal logic, event
+  handlers, etc.), edit `index.html` directly. **Do NOT run `npm run build` if
+  you only changed `index.html`** — it will overwrite the engine block but is
+  otherwise a no-op; you don't need to.
 
 ### Deployment (GitHub Pages, "Deploy from a branch")
 
@@ -81,15 +90,13 @@ npm run build # runs `tsc` then inlines into root index.html
 
 ### Implications for agents (READ THIS)
 
-- **You MUST run `npm run build` before pushing to `main`** if you changed any
-  source file (`src/index.html`, `src/engine.ts`, `src/renderer.ts`, `style.css`).
-  Otherwise the deployed site will not reflect your changes — only the committed
-  root `index.html` is served.
+- The committed root `index.html` IS what gets deployed. There is no other
+  build artifact published.
 - Working flow on `dev`:
-  1. Edit `src/` files
-  2. `npm run build` — regenerates root `index.html`
-  3. Commit including the regenerated `index.html`
-  4. When ready to release, merge `dev` into `main` with `--no-ff` and push
+  1. Edit `index.html` (UI/CSS/UI JS) and/or `src/engine.ts` (curve math).
+  2. If you changed `src/engine.ts`, run `npm run build`.
+  3. Commit (including the updated `index.html` produced by the build).
+  4. When ready to release, merge `dev` into `main` with `--no-ff` and push.
 - If a deployment doesn't appear after ~2 minutes, check
   https://github.com/andszwabe/Bosacki_Curves-Parkietaz/actions for any
   `pages build and deployment` failures.
@@ -105,7 +112,7 @@ confirming billing is unlocked.
 ### Branching workflow
 
 - `main` — production branch. Pushes auto-deploy.
-- `dev` — work-in-progress. Merge into `main` with `--no-ff` to release. Tag releases as `vX.Y` (e.g. `v1.2`).
+- `dev` — work-in-progress. Merge into `main` with `--no-ff` to release. Tag releases as `vX.Y` (e.g. `v1.2`, `v1.2.1`).
 
 ## Reference
 
