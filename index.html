@@ -1649,6 +1649,16 @@ function init() {
             }
         });
     }
+    // Generic Esc-to-close for any open modal overlay (works for future modals too).
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape")
+            return;
+        const openModals = document.querySelectorAll(".modal-overlay:not(.hidden)");
+        if (openModals.length === 0)
+            return;
+        // Close only the topmost (last in DOM order) so stacked modals work.
+        openModals[openModals.length - 1].classList.add("hidden");
+    });
     if (saveLayoutBtn) {
         const submitSaveLayout = () => {
             saveErrorEl.textContent = "";
