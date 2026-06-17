@@ -719,6 +719,12 @@ textarea:focus {
   width: 100%;
 }
 
+.settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
 .setting-field {
   display: flex;
   flex-direction: column;
@@ -752,17 +758,6 @@ textarea:focus {
   background: #fffbeb;
   border-color: #fde68a;
   color: #b45309;
-}
-
-/* Action Scope Label */
-.action-scope-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 0.4rem;
-  margin-bottom: -0.6rem;
 }
 
 /* Desk and Paper View for Tryb Absolutny */
@@ -867,6 +862,11 @@ textarea:focus {
   cursor: pointer;
 }
 
+.download-split-toggle {
+  flex: none;
+  white-space: nowrap;
+}
+
 /* Centering layout for board expansion */
 .board-container {
   width: 100%;
@@ -969,7 +969,6 @@ textarea:focus {
       <div id="warning-display" class="warning-box hidden"></div>
 
       <div id="absolute-settings-panel" class="settings-card absolute-settings-panel hidden">
-        <label>Ustawienia arkusza (Tryb Absolutny)</label>
           <div class="settings-row">
             <div class="setting-field">
               <label for="abs-preset">Format (Preset)</label>
@@ -1030,14 +1029,16 @@ textarea:focus {
               </label>
             </div>
           </div>
+          <div class="settings-footer">
+            <button id="presets-btn" class="btn btn-secondary btn-small">Zapisz / Załaduj</button>
+          </div>
         </div>
 
       <!-- Ustawienia eksportu -->
-      <div class="settings-card export-card">
-        <label>Format i jakość eksportu</label>
+      <div id="export-card" class="settings-card export-card hidden">
+        <label>Format pliku</label>
         <div class="export-row">
           <div class="setting-field">
-            <label for="export-format">Format pliku</label>
             <select id="export-format">
               <option value="svg" selected>SVG (Wektorowy)</option>
               <option value="pdf">PDF (Druk/Wektor)</option>
@@ -1058,8 +1059,6 @@ textarea:focus {
         </div>
       </div>
 
-      <div id="action-scope-display" class="action-scope-label">Działanie na: Wszystko</div>
-
       <div class="actions-row">
         <button id="copy-btn" class="btn btn-secondary" disabled>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
@@ -1074,8 +1073,12 @@ textarea:focus {
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span id="download-btn-text">Pobierz SVG</span>
+          <span id="download-btn-text">Pobierz wszystko</span>
         </button>
+        <label class="checkbox-container download-split-toggle">
+          <input type="checkbox" id="download-split">
+          <span>Osobno</span>
+        </label>
         <div id="stats-display" class="stats">Łuki: 0</div>
       </div>
 
@@ -1114,6 +1117,34 @@ textarea:focus {
       </div>
       <div class="modal-footer">
         <button id="import-layouts-btn" class="btn btn-primary" disabled>Importuj zaznaczone układy z Biblioteki</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Presets Modal Overlay -->
+  <div id="presets-modal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>Presety</h2>
+        <button id="presets-modal-close-btn" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Save Preset Section -->
+        <div class="save-layout-section">
+          <div class="save-input-row">
+            <input type="text" id="save-preset-name" placeholder="Nazwa presetu">
+            <button id="save-preset-btn" class="btn btn-primary btn-small save-btn-narrow">Zapisz</button>
+          </div>
+          <div id="save-preset-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
+        </div>
+
+        <!-- Saved Presets List -->
+        <div class="saved-layouts-section">
+          <h3>Zapisane presety</h3>
+          <div id="saved-presets-list" class="layouts-list">
+            <!-- Will be populated dynamically by JS -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1429,7 +1460,7 @@ function generateCleanSVGString(seriesList) {
     const includeBg = (_a = document.getElementById("export-bg")) === null || _a === void 0 ? void 0 : _a.checked;
     const isAbsolute = appState.viewMode === 'absolute';
     if (!isAbsolute) {
-        // Relative Mode
+        // Relative Mode — never includes a background rect (curve only).
         const allArcs = seriesList.flatMap(s => s.arcs);
         const { minX, maxX, minY, maxY } = computeBoundingBox(allArcs);
         const width = maxX - minX;
@@ -1476,7 +1507,7 @@ function generateCleanSVGString(seriesList) {
     stroke-linejoin="round"${opacityAttr}
   />\n`;
         }
-        const bgRect = includeBg ? `  <rect x="${viewBoxX.toFixed(4)}" y="${viewBoxY.toFixed(4)}" width="${viewBoxWidth.toFixed(4)}" height="${viewBoxHeight.toFixed(4)}" fill="#ffffff" />\n` : '';
+        const bgRect = '';
         return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg 
   xmlns="http://www.w3.org/2000/svg" 
@@ -1581,7 +1612,7 @@ function exportRaster(svgString, W, H, unit, dpi, format, filename) {
             const dataUrl = canvas.toDataURL(mimeType, quality);
             const link = document.createElement("a");
             link.href = dataUrl;
-            link.download = `output-curve_${filename}.${format}`;
+            link.download = `parkiet_${filename}.${format}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1614,7 +1645,7 @@ function exportLayout(seriesList, filenameNotation) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `output-curve_${safeNotation}.svg`;
+        link.download = `parkiet_${safeNotation}.svg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1648,7 +1679,7 @@ function exportLayout(seriesList, filenameNotation) {
             width: W,
             height: H
         }).then(() => {
-            doc.save(`output-curve_${safeNotation}.pdf`);
+            doc.save(`parkiet_${safeNotation}.pdf`);
             document.body.removeChild(cleanSvgElement);
         }).catch((err) => {
             console.error("PDF generation failed:", err);
@@ -1898,19 +1929,15 @@ function init() {
         const blocks = textareaEl.value.split(/\s+/);
         syncParsedLines(blocks);
         // Dynamic buttons text and scope
-        const scopeDisplayEl = document.getElementById("action-scope-display");
         const copyBtnTextEl = document.getElementById("copy-btn-text");
         const downloadBtnTextEl = document.getElementById("download-btn-text");
         const copyBtn = document.getElementById("copy-btn");
         const anySelected = appState.series.some(s => s.selected);
-        if (scopeDisplayEl) {
-            scopeDisplayEl.textContent = anySelected ? "Działanie na: Zaznaczone" : "Działanie na: Wszystko";
-        }
         if (copyBtnTextEl) {
             copyBtnTextEl.textContent = anySelected ? "Kopiuj zaznaczone" : "Kopiuj wszystko";
         }
         if (downloadBtnTextEl) {
-            downloadBtnTextEl.textContent = anySelected ? "Pobierz zaznaczone (SVG)" : "Pobierz SVG";
+            downloadBtnTextEl.textContent = anySelected ? "Pobierz zaznaczone" : "Pobierz wszystko";
         }
         if (copyBtn) {
             copyBtn.disabled = appState.series.length === 0;
@@ -2181,19 +2208,36 @@ function init() {
         const targets = anySelected
             ? appState.series.filter(s => s.selected && s.visible)
             : appState.series.filter(s => s.visible);
-        if (targets.length > 0) {
-            const exportSeriesList = targets.map(s => ({
-                id: s.id,
-                arcs: s.arcs,
-                color: s.color,
-                notation: s.transformedNotation,
-                selected: s.selected
-            }));
-            const combinedNotation = exportSeriesList
-                .map(s => s.notation.trim())
-                .filter(n => n.length > 0)
-                .join("_");
-            exportLayout(exportSeriesList, combinedNotation);
+        if (targets.length === 0)
+            return;
+        const splitEl = document.getElementById("download-split");
+        const splitMode = !!(splitEl && splitEl.checked);
+        const toExportSeries = (s) => ({
+            id: s.id,
+            arcs: s.arcs,
+            color: s.color,
+            notation: s.transformedNotation,
+            // When splitting, each file represents one series, so don't dim it.
+            selected: splitMode ? false : s.selected
+        });
+        if (splitMode) {
+            // One file per Seria.
+            targets.forEach((s, idx) => {
+                const single = [toExportSeries(s)];
+                const baseName = (s.transformedNotation || s.originalNotation || `seria_${idx + 1}`).trim();
+                exportLayout(single, baseName);
+            });
+        }
+        else {
+            const exportSeriesList = targets.map(toExportSeries);
+            // Combined-file naming: "S-1-3-7" using each Seria's position in appState.series.
+            const seriesNumbers = targets
+                .map(s => appState.series.indexOf(s) + 1)
+                .filter(n => n > 0);
+            const combinedName = seriesNumbers.length > 0
+                ? `S-${seriesNumbers.join("-")}`
+                : "S";
+            exportLayout(exportSeriesList, combinedName);
         }
     });
     // Tryb Absolutny / Relatywny UI controls
@@ -2229,12 +2273,14 @@ function init() {
     }
     function setViewMode(mode) {
         appState.viewMode = mode;
+        const exportCardEl = document.getElementById("export-card");
         if (mode === 'relative') {
             if (modeToggleBtn) {
                 modeToggleBtn.textContent = "Tryb Relatywny";
                 modeToggleBtn.className = "btn btn-secondary btn-view-mode-toggle";
             }
             absoluteSettingsPanel === null || absoluteSettingsPanel === void 0 ? void 0 : absoluteSettingsPanel.classList.add("hidden");
+            exportCardEl === null || exportCardEl === void 0 ? void 0 : exportCardEl.classList.add("hidden");
             containerEl.classList.remove("absolute-mode");
             containerEl.style.aspectRatio = "1 / 1";
         }
@@ -2244,6 +2290,7 @@ function init() {
                 modeToggleBtn.className = "btn btn-primary btn-view-mode-toggle";
             }
             absoluteSettingsPanel === null || absoluteSettingsPanel === void 0 ? void 0 : absoluteSettingsPanel.classList.remove("hidden");
+            exportCardEl === null || exportCardEl === void 0 ? void 0 : exportCardEl.classList.remove("hidden");
             containerEl.classList.add("absolute-mode");
             updateAbsoluteContainerAspect();
         }
@@ -2308,6 +2355,55 @@ function init() {
             bgCheckboxGroup === null || bgCheckboxGroup === void 0 ? void 0 : bgCheckboxGroup.classList.add("hidden");
         }
     }
+    // Unit conversion for the Tryb Absolutny fields. We assume 300 DPI when converting
+    // between pixels and physical units.
+    const UNIT_DPI = 300;
+    let lastKnownUnit = absUnitSelect ? absUnitSelect.value : "px";
+    function unitToInches(value, unit) {
+        switch (unit) {
+            case "in": return value;
+            case "cm": return value / 2.54;
+            case "mm": return value / 25.4;
+            case "px": return value / UNIT_DPI;
+            default: return value;
+        }
+    }
+    function inchesToUnit(valueInInches, unit) {
+        switch (unit) {
+            case "in": return valueInInches;
+            case "cm": return valueInInches * 2.54;
+            case "mm": return valueInInches * 25.4;
+            case "px": return valueInInches * UNIT_DPI;
+            default: return valueInInches;
+        }
+    }
+    function convertValueBetweenUnits(value, fromUnit, toUnit) {
+        if (fromUnit === toUnit || !isFinite(value))
+            return value;
+        return inchesToUnit(unitToInches(value, fromUnit), toUnit);
+    }
+    function formatConvertedValue(value, unit) {
+        if (!isFinite(value))
+            return "";
+        // Pixels are integers; physical units keep two decimals trimmed.
+        if (unit === "px")
+            return String(Math.round(value));
+        const rounded = Math.round(value * 100) / 100;
+        return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+    }
+    function convertAbsoluteFieldsBetweenUnits(fromUnit, toUnit) {
+        if (fromUnit === toUnit)
+            return;
+        const fields = [absWidthInput, absHeightInput, absMarginInput, absScaleInput];
+        for (const el of fields) {
+            if (!el)
+                continue;
+            const v = parseFloat(el.value);
+            if (!isFinite(v))
+                continue;
+            el.value = formatConvertedValue(convertValueBetweenUnits(v, fromUnit, toUnit), toUnit);
+        }
+    }
     function applyPreset() {
         const preset = absPresetSelect.value;
         if (preset === 'custom')
@@ -2353,6 +2449,7 @@ function init() {
             absShiftYInput.value = "0";
         if (absAutocenterCheckbox)
             absAutocenterCheckbox.checked = false;
+        lastKnownUnit = unit;
         updatePrintSettings();
         updateExportFieldsVisibility();
         updateAbsoluteContainerAspect();
@@ -2368,6 +2465,14 @@ function init() {
         renderCurves();
     }
     function handleManualChange() {
+        // If the user just changed the Jednostka dropdown, convert the numeric fields
+        // (Szerokość, Wysokość, Margines, Wielkość łuku) from the previous unit into
+        // the newly selected unit. We assume 300 DPI for px <-> physical conversions.
+        const newUnit = absUnitSelect.value;
+        if (newUnit !== lastKnownUnit) {
+            convertAbsoluteFieldsBetweenUnits(lastKnownUnit, newUnit);
+            lastKnownUnit = newUnit;
+        }
         absPresetSelect.value = 'custom';
         if (parseFloat(absScaleInput.value) < 0) {
             absScaleInput.value = "0";
@@ -2764,6 +2869,24 @@ function init() {
         // Close only the topmost (last in DOM order) so stacked modals work.
         openModals[openModals.length - 1].classList.add("hidden");
     });
+    // Space toggles the animation (same as clicking the canvas), unless the user is
+    // typing in a textarea/input or a modal is open.
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== " " && e.code !== "Space")
+            return;
+        const tag = (e.target && e.target.tagName) || "";
+        if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT")
+            return;
+        if (document.querySelector(".modal-overlay:not(.hidden)"))
+            return;
+        e.preventDefault();
+        if (animationFrameId !== null) {
+            renderCurves();
+        }
+        else {
+            startAnimation();
+        }
+    });
     if (saveLayoutBtn) {
         const submitSaveLayout = () => {
             saveErrorEl.textContent = "";
@@ -2838,6 +2961,215 @@ function init() {
                 }
             }
         });
+    }
+    // Presets (Tryb Absolutny — sheet settings) — save / load via localStorage.
+    const presetsBtn = document.getElementById("presets-btn");
+    const presetsModal = document.getElementById("presets-modal");
+    const presetsModalCloseBtn = document.getElementById("presets-modal-close-btn");
+    const savePresetBtn = document.getElementById("save-preset-btn");
+    const savePresetNameInput = document.getElementById("save-preset-name");
+    const savePresetErrorEl = document.getElementById("save-preset-error");
+    const savedPresetsListEl = document.getElementById("saved-presets-list");
+    const PRESETS_STORAGE_KEY = "bosacki_saved_presets";
+    function loadSavedPresets() {
+        try {
+            const data = localStorage.getItem(PRESETS_STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+        catch (e) {
+            console.error("Failed to load saved presets:", e);
+            return [];
+        }
+    }
+    function saveSavedPresets(presets) {
+        try {
+            localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+        }
+        catch (e) {
+            console.error("Failed to save presets to storage:", e);
+        }
+    }
+    function snapshotCurrentPresetValues() {
+        return {
+            preset: absPresetSelect ? absPresetSelect.value : "custom",
+            unit: absUnitSelect ? absUnitSelect.value : "px",
+            width: absWidthInput ? absWidthInput.value : "",
+            height: absHeightInput ? absHeightInput.value : "",
+            margin: absMarginInput ? absMarginInput.value : "",
+            scale: absScaleInput ? absScaleInput.value : "",
+            shiftX: absShiftXInput ? absShiftXInput.value : "0",
+            shiftY: absShiftYInput ? absShiftYInput.value : "0",
+            autocenter: absAutocenterCheckbox ? absAutocenterCheckbox.checked : false
+        };
+    }
+    function applyPresetValues(values) {
+        if (!values)
+            return;
+        if (absPresetSelect && values.preset !== undefined)
+            absPresetSelect.value = values.preset;
+        if (absUnitSelect && values.unit !== undefined)
+            absUnitSelect.value = values.unit;
+        if (absWidthInput && values.width !== undefined)
+            absWidthInput.value = String(values.width);
+        if (absHeightInput && values.height !== undefined)
+            absHeightInput.value = String(values.height);
+        if (absMarginInput && values.margin !== undefined)
+            absMarginInput.value = String(values.margin);
+        if (absScaleInput && values.scale !== undefined)
+            absScaleInput.value = String(values.scale);
+        if (absShiftXInput && values.shiftX !== undefined)
+            absShiftXInput.value = String(values.shiftX);
+        if (absShiftYInput && values.shiftY !== undefined)
+            absShiftYInput.value = String(values.shiftY);
+        if (absAutocenterCheckbox && values.autocenter !== undefined)
+            absAutocenterCheckbox.checked = !!values.autocenter;
+        // Sync the unit baseline so handleManualChange() doesn't try to convert
+        // the values we just wrote (they're already in the saved unit).
+        if (absUnitSelect)
+            lastKnownUnit = absUnitSelect.value;
+        // Re-run the same path used by manual edits so the canvas updates.
+        if (typeof handleManualChange === "function") {
+            handleManualChange();
+        }
+    }
+    function previewPresetValues(values) {
+        const parts = [];
+        if (values.unit)
+            parts.push(`${values.width}×${values.height} ${values.unit}`);
+        if (values.scale !== undefined && values.scale !== "")
+            parts.push(`skala ${values.scale}`);
+        if (values.margin !== undefined && values.margin !== "")
+            parts.push(`margines ${values.margin}`);
+        return parts.join(" · ");
+    }
+    function openPresetsModal() {
+        if (!presetsModal)
+            return;
+        presetsModal.classList.remove("hidden");
+        if (savePresetNameInput)
+            savePresetNameInput.value = "";
+        if (savePresetErrorEl) {
+            savePresetErrorEl.textContent = "";
+            savePresetErrorEl.classList.add("hidden");
+        }
+        refreshPresetsList();
+    }
+    function closePresetsModal() {
+        if (presetsModal)
+            presetsModal.classList.add("hidden");
+    }
+    function refreshPresetsList() {
+        if (!savedPresetsListEl)
+            return;
+        savedPresetsListEl.innerHTML = "";
+        const presets = loadSavedPresets();
+        if (presets.length === 0) {
+            const emptyDiv = document.createElement("div");
+            emptyDiv.className = "layouts-list-empty";
+            emptyDiv.textContent = "Brak zapisanych presetów.";
+            savedPresetsListEl.appendChild(emptyDiv);
+            return;
+        }
+        // Newest first.
+        presets.sort((a, b) => b.timestamp - a.timestamp);
+        presets.forEach(preset => {
+            const row = document.createElement("div");
+            row.className = "layout-item-row";
+            row.dataset.id = preset.id;
+            // Info — clicking it loads the preset and closes the modal.
+            const info = document.createElement("div");
+            info.className = "layout-item-info";
+            info.style.cursor = "pointer";
+            info.title = "Załaduj ten preset";
+            info.addEventListener("click", () => {
+                applyPresetValues(preset.values);
+                closePresetsModal();
+            });
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "layout-item-name";
+            nameSpan.textContent = preset.name;
+            const previewSpan = document.createElement("span");
+            previewSpan.className = "layout-item-preview";
+            previewSpan.textContent = previewPresetValues(preset.values);
+            info.appendChild(nameSpan);
+            info.appendChild(previewSpan);
+            // Delete button.
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "btn-icon";
+            deleteBtn.title = "Usuń preset";
+            deleteBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>`;
+            deleteBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (confirm(`Czy na pewno chcesz usunąć preset "${preset.name}"?`)) {
+                    const current = loadSavedPresets();
+                    saveSavedPresets(current.filter(p => p.id !== preset.id));
+                    refreshPresetsList();
+                }
+            });
+            row.appendChild(info);
+            row.appendChild(deleteBtn);
+            savedPresetsListEl.appendChild(row);
+        });
+    }
+    if (presetsBtn) {
+        presetsBtn.addEventListener("click", openPresetsModal);
+    }
+    if (presetsModalCloseBtn) {
+        presetsModalCloseBtn.addEventListener("click", closePresetsModal);
+    }
+    if (presetsModal) {
+        presetsModal.addEventListener("click", (e) => {
+            if (e.target === presetsModal)
+                closePresetsModal();
+        });
+    }
+    if (savePresetBtn) {
+        const submitSavePreset = () => {
+            if (!savePresetErrorEl)
+                return;
+            savePresetErrorEl.textContent = "";
+            savePresetErrorEl.classList.add("hidden");
+            const name = savePresetNameInput ? savePresetNameInput.value.trim() : "";
+            if (!name) {
+                savePresetErrorEl.textContent = "Podaj nazwę presetu.";
+                savePresetErrorEl.classList.remove("hidden");
+                return;
+            }
+            const values = snapshotCurrentPresetValues();
+            const presets = loadSavedPresets();
+            const exists = presets.some(p => p.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                if (!confirm(`Preset o nazwie "${name}" już istnieje. Czy chcesz go zastąpić?`)) {
+                    return;
+                }
+            }
+            const filtered = presets.filter(p => p.name.toLowerCase() !== name.toLowerCase());
+            filtered.push({
+                id: `preset_${Date.now()}`,
+                name,
+                values,
+                timestamp: Date.now()
+            });
+            saveSavedPresets(filtered);
+            if (savePresetNameInput)
+                savePresetNameInput.value = "";
+            refreshPresetsList();
+        };
+        savePresetBtn.addEventListener("click", submitSavePreset);
+        if (savePresetNameInput) {
+            savePresetNameInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitSavePreset();
+                }
+            });
+        }
     }
     // Initial load
     renderCurves();
