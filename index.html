@@ -185,6 +185,9 @@ label {
   gap: 0.4rem;
   margin-top: 0.2rem;
   align-items: center;
+  /* Match the legend row's content inset (border 2px + padding 0.6rem) so the
+     [↺] and [👁] action squares align vertically with the legend's [1.0] and [👁] columns. */
+  padding: 0 calc(0.6rem + 2px);
 }
 
 #library-btn {
@@ -200,8 +203,8 @@ label {
 }
 
 .btn.btn-actions-square {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   justify-content: center;
   align-items: center;
@@ -214,6 +217,12 @@ label {
   background: var(--accent-black);
   color: #ffffff;
   border-color: var(--accent-black);
+}
+
+/* Equalize all buttons inside the action row to 34px tall so they line up with
+   the legend row's 34px [1.0] thickness pill and [👁] eye button below. */
+.series-actions-row .btn {
+  height: 34px;
 }
 
 .textarea-container {
@@ -900,7 +909,7 @@ textarea:focus {
   border: 1px solid var(--border-color);
   border-radius: 999px;
   overflow: hidden;
-  height: 28px;
+  height: 24px;
   background: #ffffff;
   flex-shrink: 0;
 }
@@ -909,9 +918,9 @@ textarea:focus {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  width: 28px;
+  width: 22px;
   height: 100%;
   cursor: pointer;
   display: flex;
@@ -935,8 +944,8 @@ textarea:focus {
   background: #ffffff;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
