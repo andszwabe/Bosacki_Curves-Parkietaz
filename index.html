@@ -199,7 +199,7 @@ label {
   flex: none;
 }
 
-.btn-actions-square {
+.btn.btn-actions-square {
   width: 32px;
   height: 32px;
   padding: 0;
@@ -210,7 +210,7 @@ label {
   font-size: 0.8rem;
 }
 
-.btn-actions-square.active {
+.btn.btn-actions-square.active {
   background: var(--accent-black);
   color: #ffffff;
   border-color: var(--accent-black);
@@ -2346,18 +2346,7 @@ function init() {
                 transGroup.appendChild(btn);
             });
             row.appendChild(transGroup);
-            // 3. Visibility button (eye)
-            const visibilityBtn = document.createElement("button");
-            visibilityBtn.className = "btn-icon";
-            visibilityBtn.title = "Włącz/Wyłącz widoczność";
-            visibilityBtn.innerHTML = getEyeIcon(item.visible);
-            visibilityBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                item.visible = !item.visible;
-                renderCurves();
-            });
-            row.appendChild(visibilityBtn);
-            // 4. Thickness controls (–/+ popover)
+            // 3. Thickness controls (–/+ popover)
             const thickContainer = document.createElement("div");
             thickContainer.className = "thickness-container";
             const thickGroup = document.createElement("div");
@@ -2388,6 +2377,17 @@ function init() {
             thickGroup.appendChild(btnPlus);
             thickContainer.appendChild(thickGroup);
             row.appendChild(thickContainer);
+            // 4. Visibility button (eye)
+            const visibilityBtn = document.createElement("button");
+            visibilityBtn.className = "btn-icon";
+            visibilityBtn.title = "Włącz/Wyłącz widoczność";
+            visibilityBtn.innerHTML = getEyeIcon(item.visible);
+            visibilityBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                item.visible = !item.visible;
+                renderCurves();
+            });
+            row.appendChild(visibilityBtn);
             legendContainerEl.appendChild(row);
         });
     }
