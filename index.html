@@ -1527,11 +1527,25 @@ let appState = {
     series: []
 };
 
+/** Maps Polish (and other common European) accented letters to their ASCII base
+ *  so they survive into safe filenames as readable letters instead of being
+ *  stripped/replaced with underscores. NFD handles the bulk; ł/Ł don't decompose
+ *  and are mapped explicitly. */
+function transliterateToAscii(s) {
+    const explicit = { 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D', 'ø': 'o', 'Ø': 'O', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ß': 'ss' };
+    return s.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[łŁđĐøØæÆœŒß]/g, c => explicit[c] || c);
+}
+
 /** Returns a sanitized prefix for export filenames based on the current układ name and series. */
 function getSanitizedFilenamePrefix() {
     const name = (appState.ukladName || '').trim();
     if (name) {
-        const safeName = name.replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').trim().replace(/\s+/g, '_');
+        const safeName = transliterateToAscii(name)
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .trim()
+            .replace(/\s+/g, '_');
         if (safeName) return `U-${safeName}_`;
     }
     // No name set — use a fresh timestamp captured at the moment of export.
@@ -1936,7 +1950,7 @@ function exportRaster(svgString, W, H, unit, dpi, format, filename) {
 function exportLayout(seriesList, filenameNotation) {
     const format = document.getElementById("export-format").value;
     const dpi = parseFloat(document.getElementById("export-dpi").value) || 300;
-    const safeNotation = filenameNotation.trim().replace(/[^a-zA-Z0-9]/g, "_");
+    const safeNotation = transliterateToAscii(filenameNotation.trim()).replace(/[^a-zA-Z0-9]/g, "_");
     const svgString = generateCleanSVGString(seriesList);
     if (format === 'svg') {
         const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
