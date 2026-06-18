@@ -182,8 +182,12 @@ label {
 
 .series-actions-row {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.4rem;
   margin-top: 0.2rem;
+  align-items: center;
+  /* Match the legend row's content inset (border 2px + padding 0.6rem) so the
+     [↺] and [👁] action squares align vertically with the legend's [1.0] and [👁] columns. */
+  padding: 0 calc(0.6rem + 2px);
 }
 
 #library-btn {
@@ -196,6 +200,29 @@ label {
   width: 90px;
   justify-content: center;
   flex: none;
+}
+
+.btn.btn-actions-square {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex: none;
+  font-size: 0.8rem;
+}
+
+.btn.btn-actions-square.active {
+  background: var(--accent-black);
+  color: #ffffff;
+  border-color: var(--accent-black);
+}
+
+/* Equalize all buttons inside the action row to 34px tall so they line up with
+   the legend row's 34px [1.0] thickness pill and [👁] eye button below. */
+.series-actions-row .btn {
+  height: 34px;
 }
 
 .textarea-container {
@@ -706,6 +733,235 @@ textarea:focus {
   font-weight: 600;
 }
 
+/* ── Układ name field ── */
+.layout-name-container {
+  margin-top: 0.85rem;
+  width: 100%;
+  cursor: text;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  min-height: 2.4rem;
+}
+
+.layout-name-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.55rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  width: 100%;
+}
+
+.layout-name-prefix {
+  flex: none;
+}
+
+.layout-name-edit-wrapper {
+  display: none;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.55rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  width: 100%;
+}
+
+.layout-name-container.editing .layout-name-display {
+  display: none;
+}
+
+.layout-name-container.editing .layout-name-edit-wrapper {
+  display: flex;
+}
+
+.layout-name-input {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: inherit;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  min-width: 2ch;
+  flex: 1;
+  caret-color: var(--text-primary);
+  line-height: 1.2;
+}
+
+/* ── Per-series thickness controls ── */
+.thickness-container {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+}
+
+.thickness-btn-group {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  overflow: hidden;
+  height: 26px;
+}
+
+.thickness-btn {
+  background: #ffffff;
+  border: none;
+  border-right: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  width: 24px;
+  height: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  padding: 0;
+  font-weight: 600;
+}
+
+.thickness-btn:last-child {
+  border-right: none;
+}
+
+.thickness-btn:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+}
+
+.thickness-value {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  min-width: 2.2ch;
+  text-align: center;
+  font-family: var(--font-sans);
+  line-height: 1;
+}
+
+/* Collapsed thickness display — square pill matching the eye button next to it */
+.thickness-display {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.thickness-display:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+  border-color: #94a3b8;
+}
+
+.thickness-display.active {
+  border-color: var(--accent-black);
+  color: var(--text-primary);
+  background: #ffffff;
+}
+
+/* Expanded thickness control — same size as the collapsed pill, styled as an editable field */
+.thickness-input {
+  background: #ffffff;
+  border: 1px solid var(--accent-black);
+  color: var(--text-primary);
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.thickness-input::-webkit-outer-spin-button,
+.thickness-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Pill containing − and + */
+.thickness-pill {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 24px;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.thickness-pill-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 22px;
+  height: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.thickness-pill-btn:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+.thickness-pill-btn:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+}
+
+/* Round single-series reset button (between pill and input) */
+.thickness-reset-btn {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+}
+
+.thickness-reset-btn:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+  border-color: #94a3b8;
+}
+
 .absolute-settings-panel {
   display: flex;
   flex-direction: column;
@@ -835,6 +1091,9 @@ textarea:focus {
   font-weight: 500;
 }
 
+/* Cursor blink animation removed — we now use the native text input caret
+   (driven by `caret-color: var(--text-primary)` on .layout-name-input). */
+
 /* Export row layout */
 .export-row {
   display: flex;
@@ -949,9 +1208,8 @@ textarea:focus {
         </div>
         <div id="error-display" class="error-box hidden"></div>
         <div class="series-actions-row">
-          <button id="library-btn" class="btn btn-secondary btn-small">
-            <span class="swirl-icon">𖦹</span>
-            <span>Biblioteka</span>
+          <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie / klawisz 0)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </button>
           <button id="color-mode-btn" class="btn btn-secondary btn-small">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
@@ -960,11 +1218,28 @@ textarea:focus {
             </svg>
             <span>Kolor</span>
           </button>
+          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)" style="margin-left: auto;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          </button>
+          <button id="visibility-all-btn" class="btn btn-secondary btn-small btn-actions-square" title="Pokaż / Ukryj wszystkie serie">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
         <div id="series-legend" class="series-legend-list"></div>
       </div>
 
       <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle">Tryb Relatywny</button>
+
+      <!-- Układ naming field -->
+      <div id="layout-name-container" class="layout-name-container" title="Kliknij, aby nazwać układ">
+        <div id="layout-name-display" class="layout-name-display">
+          <span id="layout-name-text">Układ</span>
+        </div>
+        <div id="layout-name-edit-wrapper" class="layout-name-edit-wrapper">
+          <span class="layout-name-prefix">Układ:&nbsp;</span>
+          <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" />
+        </div>
+      </div>
 
       <div id="warning-display" class="warning-box hidden"></div>
 
@@ -1080,6 +1355,13 @@ textarea:focus {
           <span>Osobno</span>
         </label>
         <div id="stats-display" class="stats">Łuki: 0</div>
+      </div>
+
+      <div class="actions-row">
+        <button id="library-btn" class="btn btn-secondary">
+          <span class="swirl-icon">𖦹</span>
+          <span>Biblioteka</span>
+        </button>
       </div>
 
       <div class="legend-card">
@@ -1234,6 +1516,7 @@ function applyTransformation(modules, type) {
 let colorMode = 'color';
 let appState = {
     viewMode: 'relative',
+    ukladName: '',
     printSettings: {
         unit: 'px',
         width: 3840,
@@ -1246,6 +1529,44 @@ let appState = {
     },
     series: []
 };
+
+/** Maps Polish (and other common European) accented letters to their ASCII base
+ *  so they survive into safe filenames as readable letters instead of being
+ *  stripped/replaced with underscores. NFD handles the bulk; ł/Ł don't decompose
+ *  and are mapped explicitly. */
+function transliterateToAscii(s) {
+    const explicit = { 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D', 'ø': 'o', 'Ø': 'O', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ß': 'ss' };
+    return s.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[łŁđĐøØæÆœŒß]/g, c => explicit[c] || c);
+}
+
+/** Returns a sanitized prefix for export filenames based on the current układ name and series. */
+function getSanitizedFilenamePrefix() {
+    const name = (appState.ukladName || '').trim();
+    if (name) {
+        // Multi-word names join with '-' so '_' can act as the section separator
+        // in the final filename: U_<name-name>_S_<n-n>.ext
+        const safeName = transliterateToAscii(name)
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .trim()
+            .replace(/\s+/g, '-');
+        if (safeName) return `U_${safeName}_`;
+    }
+    // No name set — use a fresh timestamp captured at the moment of export.
+    return `U_${getTimestampString()}_`;
+}
+
+/** Returns a timestamp string YYMMDD-HHMM (minute precision). */
+function getTimestampString() {
+    const now = new Date();
+    const YY = String(now.getFullYear()).slice(2);
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const DD = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    return `${YY}${MM}${DD}-${hh}${mm}`;
+}
 /**
  * Builds the SVG path 'd' attribute string from a list of ArcSegments.
  * Maps standard Cartesian coordinates (Y-up) to SVG space (Y-down) by negating Y.
@@ -1349,7 +1670,7 @@ function generateSVGElement(seriesList) {
             path.setAttribute("data-series-id", s.id);
             path.setAttribute("fill", "none");
             path.setAttribute("stroke", colorMode === 'color' ? s.color : "#000000");
-            path.setAttribute("stroke-width", strokeWidth);
+            path.setAttribute("stroke-width", (parseFloat(strokeWidth) * (s.strokeWidth || 1.0)).toFixed(4));
             path.setAttribute("stroke-linecap", "round");
             path.setAttribute("stroke-linejoin", "round");
             if (anySelected && !s.selected) {
@@ -1433,7 +1754,7 @@ function generateSVGElement(seriesList) {
             path.setAttribute("data-series-id", s.id);
             path.setAttribute("fill", "none");
             path.setAttribute("stroke", colorMode === 'color' ? s.color : "#000000");
-            path.setAttribute("stroke-width", strokeWidth);
+            path.setAttribute("stroke-width", (parseFloat(strokeWidth) * (s.strokeWidth || 1.0)).toFixed(4));
             path.setAttribute("stroke-linecap", "round");
             path.setAttribute("stroke-linejoin", "round");
             if (anySelected && !s.selected) {
@@ -1480,7 +1801,8 @@ function generateCleanSVGString(seriesList) {
                 id: s.id,
                 arcs: scaledArcs,
                 color: s.color,
-                selected: s.selected
+                selected: s.selected,
+                strokeWidth: s.strokeWidth || 1.0
             };
         });
         const allScaledArcs = scaledSeries.flatMap(s => s.arcs);
@@ -1498,14 +1820,8 @@ function generateCleanSVGString(seriesList) {
                 continue;
             const isDimmed = anySelected && !s.selected;
             const opacityAttr = isDimmed ? ' opacity="0.03"' : '';
-            pathElements += `  <path 
-    d="${renderSVGPath(s.arcs)}" 
-    fill="none" 
-    stroke="${colorMode === 'color' ? s.color : "#000000"}" 
-    stroke-width="1.5" 
-    stroke-linecap="round" 
-    stroke-linejoin="round"${opacityAttr}
-  />\n`;
+            const baseStrokeWidth = 1.5 * exportScale;
+            pathElements += `  <path \n    d="${renderSVGPath(s.arcs)}" \n    fill="none" \n    stroke="${colorMode === 'color' ? s.color : "#000000"}" \n    stroke-width="${(baseStrokeWidth * (s.strokeWidth || 1.0)).toFixed(4)}" \n    stroke-linecap="round" \n    stroke-linejoin="round"${opacityAttr}\n  />\n`;
         }
         const bgRect = '';
         return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -1612,7 +1928,7 @@ function exportRaster(svgString, W, H, unit, dpi, format, filename) {
             const dataUrl = canvas.toDataURL(mimeType, quality);
             const link = document.createElement("a");
             link.href = dataUrl;
-            link.download = `parkiet_${filename}.${format}`;
+            link.download = `${filename}.${format}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1638,14 +1954,14 @@ function exportRaster(svgString, W, H, unit, dpi, format, filename) {
 function exportLayout(seriesList, filenameNotation) {
     const format = document.getElementById("export-format").value;
     const dpi = parseFloat(document.getElementById("export-dpi").value) || 300;
-    const safeNotation = filenameNotation.trim().replace(/[^a-zA-Z0-9]/g, "_");
+    const safeNotation = transliterateToAscii(filenameNotation.trim()).replace(/[^a-zA-Z0-9_-]/g, "_");
     const svgString = generateCleanSVGString(seriesList);
     if (format === 'svg') {
         const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `parkiet_${safeNotation}.svg`;
+        link.download = `${safeNotation}.svg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1679,7 +1995,7 @@ function exportLayout(seriesList, filenameNotation) {
             width: W,
             height: H
         }).then(() => {
-            doc.save(`parkiet_${safeNotation}.pdf`);
+            doc.save(`${safeNotation}.pdf`);
             document.body.removeChild(cleanSvgElement);
         }).catch((err) => {
             console.error("PDF generation failed:", err);
@@ -1742,6 +2058,7 @@ function getColorForIndex(index) {
     return `hsl(${hue}, 75%, ${lightness}%)`;
 }
 // UI Setup & DOM Controller
+let activeThicknessId = null;
 function init() {
     const containerEl = document.getElementById("svg-container");
     const statsEl = document.getElementById("stats-display");
@@ -1752,6 +2069,9 @@ function init() {
     const backdropEl = document.getElementById("notation-backdrop");
     const legendContainerEl = document.getElementById("series-legend");
     const colorModeBtn = document.getElementById("color-mode-btn");
+    const visibilityAllBtn = document.getElementById("visibility-all-btn");
+    const resetAllThicknessBtn = document.getElementById("reset-all-thickness-btn");
+    const selectNoneBtn = document.getElementById("select-none-btn");
     // Initial state with default Seria A loaded in the textarea
     textareaEl.value = "1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
     let animationFrameId = null;
@@ -1835,24 +2155,7 @@ function init() {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
-    function getEyeIcon(visible) {
-        if (visible) {
-            return `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-      `;
-        }
-        else {
-            return `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-          <line x1="1" y1="1" x2="23" y2="23"></line>
-        </svg>
-      `;
-        }
-    }
+    // getEyeIcon is defined inside renderLegend scope above
     function syncParsedLines(blocks) {
         const newSeries = [];
         let validCount = 0;
@@ -1889,6 +2192,11 @@ function init() {
                 transformedNotation = transformedModules.map(m => `${m.size}${m.direction.toUpperCase()}`).join("");
             }
             catch (err) { }
+            // Preserve strokeWidth from existing series if available
+            let strokeWidth = 1.0;
+            if (existing && typeof existing.strokeWidth === 'number') {
+                strokeWidth = existing.strokeWidth;
+            }
             newSeries.push({
                 id,
                 lineIndex: i,
@@ -1898,7 +2206,8 @@ function init() {
                 visible,
                 selected,
                 color,
-                arcs
+                arcs,
+                strokeWidth
             });
             validCount++;
         }
@@ -1941,6 +2250,15 @@ function init() {
         }
         if (copyBtn) {
             copyBtn.disabled = appState.series.length === 0;
+        }
+        if (visibilityAllBtn) {
+            visibilityAllBtn.disabled = appState.series.length === 0;
+        }
+        if (resetAllThicknessBtn) {
+            resetAllThicknessBtn.disabled = appState.series.length === 0;
+        }
+        if (selectNoneBtn) {
+            selectNoneBtn.disabled = appState.series.length === 0;
         }
         // Highlight text in textarea backdrop
         let hlCount = 0;
@@ -1996,7 +2314,8 @@ function init() {
                     arcs,
                     color: item.color,
                     notation: item.transformedNotation,
-                    selected: item.selected
+                    selected: item.selected,
+                    strokeWidth: item.strokeWidth || 1.0
                 });
             }
             catch (err) {
@@ -2063,7 +2382,27 @@ function init() {
         }
         renderLegend();
     }
+    function getEyeIcon(visible) {
+        if (visible) {
+            return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        } else {
+            return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+        }
+    }
     function renderLegend() {
+        // Update global action buttons state
+        if (visibilityAllBtn) {
+            const anyVisible = appState.series.some(s => s.visible);
+            visibilityAllBtn.title = anyVisible ? "Ukryj wszystkie serie" : "Pokaż wszystkie serie";
+        }
+        if (selectNoneBtn) {
+            const anySelected = appState.series.some(s => s.selected);
+            if (!anySelected && appState.series.length > 0) {
+                selectNoneBtn.classList.add("active");
+            } else {
+                selectNoneBtn.classList.remove("active");
+            }
+        }
         legendContainerEl.innerHTML = "";
         appState.series.forEach((item, idx) => {
             const row = document.createElement("div");
@@ -2127,20 +2466,107 @@ function init() {
                 btn.addEventListener("click", (e) => {
                     e.stopPropagation();
                     item.transformation = type;
-                    // Pre-calculate transformation on the state item
                     const modules = parseNotation(item.originalNotation);
                     const transformedModules = applyTransformation(modules, type);
                     item.transformedNotation = transformedModules.map(m => `${m.size}${m.direction.toUpperCase()}`).join("");
-                    try {
-                        item.arcs = generateArcs(transformedModules);
-                    }
-                    catch (err) { }
+                    try { item.arcs = generateArcs(transformedModules); } catch (err) { }
                     renderCurves();
                 });
                 transGroup.appendChild(btn);
             });
             row.appendChild(transGroup);
-            // 3. Visibility button (eye)
+            // 3. Thickness controls — collapsed pill, click to expand
+            const thickContainer = document.createElement("div");
+            thickContainer.className = "thickness-container";
+            const isExpanded = activeThicknessId === item.id;
+            const currentValue = (item.strokeWidth ?? 1.0);
+            const clamp = v => Math.min(10, Math.max(0.1, Math.round(v * 10) / 10));
+            const commitValue = v => {
+                if (Number.isFinite(v)) {
+                    item.strokeWidth = clamp(v);
+                }
+                renderCurves();
+            };
+            if (isExpanded) {
+                // [− +]  [↺]  [1.0 input]
+                const pill = document.createElement("div");
+                pill.className = "thickness-pill";
+                const btnMinus = document.createElement("button");
+                btnMinus.type = "button";
+                btnMinus.className = "thickness-pill-btn";
+                btnMinus.textContent = "–";
+                btnMinus.title = "Zmniejsz grubość kreski (klawisz -)";
+                btnMinus.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    commitValue(currentValue - 0.1);
+                });
+                const btnPlus = document.createElement("button");
+                btnPlus.type = "button";
+                btnPlus.className = "thickness-pill-btn";
+                btnPlus.textContent = "+";
+                btnPlus.title = "Zwiększ grubość kreski (klawisz =)";
+                btnPlus.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    commitValue(currentValue + 0.1);
+                });
+                pill.appendChild(btnMinus);
+                pill.appendChild(btnPlus);
+                thickContainer.appendChild(pill);
+                const resetBtn = document.createElement("button");
+                resetBtn.type = "button";
+                resetBtn.className = "thickness-reset-btn";
+                resetBtn.title = "Resetuj grubość tej serii do 1.0";
+                resetBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>';
+                resetBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    commitValue(1.0);
+                });
+                thickContainer.appendChild(resetBtn);
+                const input = document.createElement("input");
+                input.type = "number";
+                input.className = "thickness-input";
+                input.min = "0.1";
+                input.max = "10";
+                input.step = "0.1";
+                input.value = currentValue.toFixed(1);
+                input.title = "Wpisz grubość (0.1–10) i naciśnij Enter";
+                input.addEventListener("click", (e) => e.stopPropagation());
+                input.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitValue(parseFloat(input.value));
+                        activeThicknessId = null;
+                        renderCurves();
+                    } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        activeThicknessId = null;
+                        renderCurves();
+                    }
+                });
+                input.addEventListener("blur", () => {
+                    commitValue(parseFloat(input.value));
+                });
+                thickContainer.appendChild(input);
+                // Autofocus + select on next frame so it survives the re-render
+                requestAnimationFrame(() => {
+                    input.focus();
+                    input.select();
+                });
+            } else {
+                const display = document.createElement("button");
+                display.type = "button";
+                display.className = "thickness-display";
+                display.textContent = currentValue.toFixed(1);
+                display.title = "Kliknij, aby edytować grubość kreski";
+                display.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    activeThicknessId = item.id;
+                    renderCurves();
+                });
+                thickContainer.appendChild(display);
+            }
+            row.appendChild(thickContainer);
+            // 4. Visibility button (eye)
             const visibilityBtn = document.createElement("button");
             visibilityBtn.className = "btn-icon";
             visibilityBtn.title = "Włącz/Wyłącz widoczność";
@@ -2183,6 +2609,100 @@ function init() {
             renderCurves();
         });
     }
+    if (visibilityAllBtn) {
+        visibilityAllBtn.addEventListener("click", () => {
+            const anyVisible = appState.series.some(s => s.visible);
+            appState.series.forEach(s => { s.visible = !anyVisible; });
+            renderCurves();
+        });
+    }
+    if (resetAllThicknessBtn) {
+        resetAllThicknessBtn.addEventListener("click", () => {
+            appState.series.forEach(s => { s.strokeWidth = 1.0; });
+            activeThicknessId = null;
+            renderCurves();
+        });
+    }
+    if (selectNoneBtn) {
+        selectNoneBtn.addEventListener("click", () => {
+            appState.series.forEach(s => { s.selected = false; });
+            renderCurves();
+        });
+    }
+    // Dismiss expanded thickness control when clicking outside any .thickness-container
+    document.addEventListener("mousedown", (e) => {
+        if (activeThicknessId === null) return;
+        if (e.target.closest(".thickness-container")) return;
+        activeThicknessId = null;
+        renderCurves();
+    });
+    // Układ naming logic
+    const layoutNameContainer = document.getElementById("layout-name-container");
+    const layoutNameText = document.getElementById("layout-name-text");
+    const layoutNameInput = document.getElementById("layout-name-input");
+    function updateLayoutNameDisplay() {
+        if (!layoutNameText) return;
+        const name = (appState.ukladName || '').trim();
+        layoutNameText.textContent = name ? `Układ: ${name}` : 'Układ';
+    }
+    function enterLayoutNamingMode() {
+        if (!layoutNameContainer) return;
+        layoutNameContainer.classList.add("editing");
+        if (layoutNameInput) {
+            layoutNameInput.value = appState.ukladName || '';
+            layoutNameInput.focus();
+            layoutNameInput.select();
+        }
+    }
+    function exitLayoutNamingMode() {
+        if (!layoutNameContainer) return;
+        layoutNameContainer.classList.remove("editing");
+        const raw = (layoutNameInput ? layoutNameInput.value : '').trim();
+        // Allow only letters, digits, spaces (including Polish chars)
+        const sanitized = raw.replace(/[^\w\u00C0-\u024F\s]/g, '').replace(/\s+/g, ' ').trim();
+        appState.ukladName = sanitized;
+        updateLayoutNameDisplay();
+    }
+    if (layoutNameContainer) {
+        layoutNameContainer.addEventListener("click", (e) => {
+            if (!layoutNameContainer.classList.contains("editing")) {
+                enterLayoutNamingMode();
+                e.stopPropagation();
+            }
+        });
+    }
+    if (layoutNameInput) {
+        layoutNameInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                exitLayoutNamingMode();
+            } else if (e.key === "Escape") {
+                // Restore original value on escape
+                layoutNameInput.value = appState.ukladName || '';
+                exitLayoutNamingMode();
+            }
+        });
+        layoutNameInput.addEventListener("blur", () => {
+            // Don't exit immediately — let click on container re-focus first
+            setTimeout(() => {
+                if (layoutNameContainer && layoutNameContainer.classList.contains("editing")) {
+                    if (document.activeElement !== layoutNameInput) {
+                        exitLayoutNamingMode();
+                    }
+                }
+            }, 100);
+        });
+    }
+    // Close naming mode when clicking outside
+    document.addEventListener("click", (e) => {
+        if (layoutNameContainer && layoutNameContainer.classList.contains("editing")) {
+            if (!layoutNameContainer.contains(e.target)) {
+                exitLayoutNamingMode();
+            }
+        }
+    });
+    // Initialize display
+    updateLayoutNameDisplay();
     // Copy button listener
     const copyBtn = document.getElementById("copy-btn");
     const copyBtnTextEl = document.getElementById("copy-btn-text");
@@ -2220,24 +2740,29 @@ function init() {
             // When splitting, each file represents one series, so don't dim it.
             selected: splitMode ? false : s.selected
         });
+        const prefix = getSanitizedFilenamePrefix();
         if (splitMode) {
             // One file per Seria.
             targets.forEach((s, idx) => {
                 const single = [toExportSeries(s)];
-                const baseName = (s.transformedNotation || s.originalNotation || `seria_${idx + 1}`).trim();
-                exportLayout(single, baseName);
+                const notation = (s.transformedNotation || s.originalNotation || `seria_${idx + 1}`).trim();
+                exportLayout(single, `${prefix}S_${notation}`);
             });
         }
         else {
             const exportSeriesList = targets.map(toExportSeries);
-            // Combined-file naming: "S-1-3-7" using each Seria's position in appState.series.
-            const seriesNumbers = targets
-                .map(s => appState.series.indexOf(s) + 1)
-                .filter(n => n > 0);
-            const combinedName = seriesNumbers.length > 0
-                ? `S-${seriesNumbers.join("-")}`
-                : "S";
-            exportLayout(exportSeriesList, combinedName);
+            let suffix = "";
+            if (targets.length === 1) {
+                const s = targets[0];
+                const notation = (s.transformedNotation || s.originalNotation || "seria").trim();
+                suffix = `S_${notation}`;
+            } else {
+                const seriesNumbers = targets
+                    .map(s => appState.series.indexOf(s) + 1)
+                    .filter(n => n > 0);
+                suffix = seriesNumbers.length > 0 ? `S_${seriesNumbers.join("-")}` : "S";
+            }
+            exportLayout(exportSeriesList, `${prefix}${suffix}`);
         }
     });
     // Tryb Absolutny / Relatywny UI controls
@@ -2542,6 +3067,19 @@ function init() {
             return;
         }
         const key = e.key.toUpperCase();
+        // Thickness shortcuts: - (minus) and = (equal/plus)
+        if (e.key === "-" || e.key === "=") {
+            e.preventDefault();
+            const delta = e.key === "-" ? -0.1 : 0.1;
+            const anySelected = appState.series.some(s => s.selected);
+            appState.series.forEach(s => {
+                if (!anySelected || s.selected) {
+                    s.strokeWidth = Math.min(10, Math.max(0.1, Math.round((s.strokeWidth + delta) * 10) / 10));
+                }
+            });
+            renderCurves();
+            return;
+        }
         // 1. Selection Digits
         if (/^[0-9]$/.test(key)) {
             if (pressedDigits.size === 0) {

@@ -46,16 +46,24 @@ The file will have the same name as the link text, with `.md` extension. For exa
 
 ```
 parkietaz-app/          ← this repo (git-tracked)
+  index.html            ← THE app: HTML + CSS + UI JS all inline here (edit directly)
+  src/engine.ts         ← curve math only (TypeScript); compiled → dist/engine.js → inlined
+  scripts/inline.js     ← inlines dist/engine.js between ENGINE_START/ENGINE_END markers
+  tsconfig.json         ← compiles src/engine.ts only (outFile: dist/engine.js)
+  package.json          ← version 1.3.0, one devDep: typescript
+  .nojekyll             ← keeps GitHub Pages from running Jekyll
 ../input/               ← source materials from Bosacki (NOT in repo)
 ../Z-2605_Bosacki_Curves-Parkietaż.md  ← project note (NOT in repo)
 ```
+
+**Removed in v1.3 arch refactor:** `src/index.html`, `src/renderer.ts`, `style.css` — their content now lives directly in `index.html`.
 
 ## Constraints
 
 - **Machine:** P1 laptop only. All development happens on P1.
 - **Hermes Agent** accesses this project via SSH from aspc → p1.
 - **Antigravity IDE** runs locally on P1.
-- **GitHub:** andszwabe/Bosacki_Curves-Parkietaz (private)
+- **GitHub:** andszwabe/Bosacki_Curves-Parkietaz (public)
 
 ## Build & Deployment (IMPORTANT)
 
@@ -121,6 +129,52 @@ confirming billing is unlocked.
 - Original scripts: `../input/old-scripts-from-piotr/`
 - Project note: `../Z-2605_Bosacki_Curves-Parkietaż.md`
 - Research note: `../res_Bosacki_Curves_SVG_Arc_Generation_Solutions.md`
+
+## Current Feature Set (v1.3, 2026-06-17)
+
+### Tryb Relatywny (default)
+- Textarea input: one or more notations, one per line (e.g. `1p2p3p4p5l6l7l6l5p4p3p2p`)
+- Each line = one Seria with its own colour and legend row
+- Buttons per Seria: O (Oryginał) / I (Inwersja, swap L↔P) / R (Rak, reverse) / IR (Inwersja Raka)
+- Visibility toggle, focus mode, Kolor/Mono toggle
+- Odbicie lustrzane button (mirrors whole textarea L↔P)
+- Biblioteka modal (save/load named notation sets, localStorage: `bosacki_saved_layouts`)
+- Animation: arcs draw on load and on canvas click or Space key
+- Export: SVG only, no background, filename `parkiet_S-1-3-7.svg` (combined) or `parkiet_<notation>.svg` (Osobno)
+- "Osobno" checkbox next to download button — one file per Seria
+
+### Tryb Absolutny
+- Toggle button beneath the canvas: **Tryb Relatywny ↔ Tryb Absolutny**
+- Settings panel (visible only in Absolutny): Format (Preset) dropdown, Jednostka (px/cm/mm/in), Szerokość, Wysokość, Margines, Wielkość łuku o wartości 1, Przesunięcie X/Y (%), Autocentrowanie
+- Switching Jednostka **converts all numeric fields live** (300 DPI for px↔physical)
+- Built-in presets: 4K UHD, Full HD, A4/A3 horizontal/vertical, Custom
+- **Presety modal** ("Zapisz / Załaduj" button at bottom-right of settings): save/load named full-settings snapshots, localStorage: `bosacki_saved_presets`
+- Export card (Format pliku) visible only in Absolutny: SVG / PDF / PNG / JPEG, DPI selector, Białe tło checkbox
+- Scale parameter flows into `generateArcs(modules, scale)` — arc radii scale proportionally
+
+### Keyboard shortcuts
+- **Space** — toggle animation (ignored when textarea/input focused or modal open)
+- **Esc** — close topmost open modal (generic; works for any `.modal-overlay`)
+- **Enter** in Biblioteka / Presety name inputs — saves immediately
+
+### Export filename convention
+- Prefix: `parkiet_`
+- Combined (no Osobno): `parkiet_S-<n1>-<n2>-….ext` (series numbers from `appState.series`)
+- Split (Osobno): `parkiet_<notacja>.ext` (per-Seria notation string)
+- Future (not yet implemented): when Układ name field is added → `parkiet_U-<name>_S-<n>.ext`
+
+### Architecture notes for the next agent
+- `appState` (global object in `index.html`) holds all runtime state: `series[]`, `viewMode`, `printSettings`
+- `appState.series[i]` fields: `id`, `originalNotation`, `transformedNotation`, `transformation` ('O'|'I'|'R'|'RI'), `arcs`, `color`, `selected`, `visible`
+- Engine functions (inlined from `src/engine.ts`): `parseNotation(str)`, `generateArcs(modules, scale?)`, `applyTransformation(modules, type)`
+- `handleManualChange()` is the central re-render trigger for Absolutny settings changes
+- `renderCurves()` / `startAnimation()` / `stopAnimation()` — main draw cycle
+
+## Planned / Future Work
+
+- [ ] **Układ naming before export** — a text input below the Tryb toggle button where user can name the current układ. When set, filenames become `parkiet_U-<name>_S-1-3.svg` (combined) or `parkiet_U-<name>_<notation>.svg` (split).
+- [ ] **Line thickness per Seria** — noted by Bosacki ("grubość kreski - per seria")
+- [ ] **Phase 3** — TBD
 
 ## Rules for Agents
 
