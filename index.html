@@ -788,7 +788,7 @@ textarea:focus {
   border: none;
   outline: none;
   padding: 0;
-  margin: 0 0 0 0.25em;
+  margin: 0;
   min-width: 2ch;
   flex: 1;
   caret-color: var(--text-primary);
@@ -1091,21 +1091,8 @@ textarea:focus {
   font-weight: 500;
 }
 
-/* Cursor blink animation for Układ name */
-@keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-.blinking-cursor {
-  display: inline-block;
-  animation: cursor-blink 1s step-end infinite;
-  font-weight: 700;
-  font-family: var(--font-display);
-  color: var(--text-primary);
-  font-size: inherit;
-  line-height: 1.2;
-}
+/* Cursor blink animation removed — we now use the native text input caret
+   (driven by `caret-color: var(--text-primary)` on .layout-name-input). */
 
 /* Export row layout */
 .export-row {
@@ -1250,12 +1237,11 @@ textarea:focus {
       <!-- Układ naming field -->
       <div id="layout-name-container" class="layout-name-container" title="Kliknij, aby nazwać układ">
         <div id="layout-name-display" class="layout-name-display">
-          <span class="layout-name-prefix">U </span><span id="layout-name-text"></span>
+          <span id="layout-name-text">Układ</span>
         </div>
         <div id="layout-name-edit-wrapper" class="layout-name-edit-wrapper">
-          <span class="layout-name-prefix">U</span>
+          <span class="layout-name-prefix">Układ:&nbsp;</span>
           <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" />
-          <span id="layout-name-cursor" class="blinking-cursor">_</span>
         </div>
       </div>
 
@@ -1546,9 +1532,10 @@ function getSanitizedFilenamePrefix() {
     const name = (appState.ukladName || '').trim();
     if (name) {
         const safeName = name.replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').trim().replace(/\s+/g, '_');
-        return safeName ? `U-${safeName}_` : '';
+        if (safeName) return `U-${safeName}_`;
     }
-    return '';
+    // No name set — use a fresh timestamp captured at the moment of export.
+    return `U-${getTimestampString()}_`;
 }
 
 /** Returns a timestamp string YYMMDD-HHmmss. */
@@ -2635,11 +2622,10 @@ function init() {
     const layoutNameContainer = document.getElementById("layout-name-container");
     const layoutNameText = document.getElementById("layout-name-text");
     const layoutNameInput = document.getElementById("layout-name-input");
-    const layoutNameCursor = document.getElementById("layout-name-cursor");
     function updateLayoutNameDisplay() {
-        if (layoutNameText) {
-            layoutNameText.textContent = appState.ukladName || getTimestampString();
-        }
+        if (!layoutNameText) return;
+        const name = (appState.ukladName || '').trim();
+        layoutNameText.textContent = name ? `Układ: ${name}` : 'Układ';
     }
     function enterLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2649,16 +2635,13 @@ function init() {
             layoutNameInput.focus();
             layoutNameInput.select();
         }
-        if (layoutNameCursor) {
-            layoutNameCursor.style.display = 'inline-block';
-        }
     }
     function exitLayoutNamingMode() {
         if (!layoutNameContainer) return;
         layoutNameContainer.classList.remove("editing");
         const raw = (layoutNameInput ? layoutNameInput.value : '').trim();
         // Allow only letters, digits, spaces (including Polish chars)
-        const sanitized = raw.replace(/[^\w\u00C0-\u024F\s]/g, '').trim();
+        const sanitized = raw.replace(/[^\w\u00C0-\u024F\s]/g, '').replace(/\s+/g, ' ').trim();
         appState.ukladName = sanitized;
         updateLayoutNameDisplay();
     }
@@ -2679,12 +2662,6 @@ function init() {
                 // Restore original value on escape
                 layoutNameInput.value = appState.ukladName || '';
                 exitLayoutNamingMode();
-            }
-        });
-        layoutNameInput.addEventListener("input", () => {
-            if (layoutNameCursor) {
-                // Position cursor after text - inline CSS offset
-                layoutNameCursor.style.display = 'none';
             }
         });
         layoutNameInput.addEventListener("blur", () => {
