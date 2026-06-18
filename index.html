@@ -1910,7 +1910,7 @@ function exportRaster(svgString, W, H, unit, dpi, format, filename) {
             const dataUrl = canvas.toDataURL(mimeType, quality);
             const link = document.createElement("a");
             link.href = dataUrl;
-            link.download = `parkiet_${filename}.${format}`;
+            link.download = `${filename}.${format}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1943,7 +1943,7 @@ function exportLayout(seriesList, filenameNotation) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `parkiet_${safeNotation}.svg`;
+        link.download = `${safeNotation}.svg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1977,7 +1977,7 @@ function exportLayout(seriesList, filenameNotation) {
             width: W,
             height: H
         }).then(() => {
-            doc.save(`parkiet_${safeNotation}.pdf`);
+            doc.save(`${safeNotation}.pdf`);
             document.body.removeChild(cleanSvgElement);
         }).catch((err) => {
             console.error("PDF generation failed:", err);
