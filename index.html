@@ -838,6 +838,121 @@ textarea:focus {
   line-height: 1;
 }
 
+/* Collapsed thickness display — square pill matching the eye button next to it */
+.thickness-display {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.thickness-display:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+  border-color: #94a3b8;
+}
+
+.thickness-display.active {
+  border-color: var(--accent-black);
+  color: var(--text-primary);
+  background: #ffffff;
+}
+
+/* Expanded thickness control — same size as the collapsed pill, styled as an editable field */
+.thickness-input {
+  background: #ffffff;
+  border: 1px solid var(--accent-black);
+  color: var(--text-primary);
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.thickness-input::-webkit-outer-spin-button,
+.thickness-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Pill containing − and + */
+.thickness-pill {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 28px;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.thickness-pill-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  width: 28px;
+  height: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.thickness-pill-btn:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+.thickness-pill-btn:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+}
+
+/* Round single-series reset button (between pill and input) */
+.thickness-reset-btn {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+}
+
+.thickness-reset-btn:hover {
+  background: var(--accent-gray);
+  color: var(--text-primary);
+  border-color: #94a3b8;
+}
+
 .absolute-settings-panel {
   display: flex;
   flex-direction: column;
@@ -2346,36 +2461,96 @@ function init() {
                 transGroup.appendChild(btn);
             });
             row.appendChild(transGroup);
-            // 3. Thickness controls (–/+ popover)
+            // 3. Thickness controls — collapsed pill, click to expand
             const thickContainer = document.createElement("div");
             thickContainer.className = "thickness-container";
-            const thickGroup = document.createElement("div");
-            thickGroup.className = "thickness-btn-group";
-            const btnMinus = document.createElement("button");
-            btnMinus.className = "thickness-btn";
-            btnMinus.textContent = "–";
-            btnMinus.title = "Zmniejsz grubość kreski (klawisz -)";
-            btnMinus.addEventListener("click", (e) => {
-                e.stopPropagation();
-                item.strokeWidth = Math.max(0.1, Math.round((item.strokeWidth - 0.1) * 10) / 10);
+            const isExpanded = activeThicknessId === item.id;
+            const currentValue = (item.strokeWidth ?? 1.0);
+            const clamp = v => Math.min(10, Math.max(0.1, Math.round(v * 10) / 10));
+            const commitValue = v => {
+                if (Number.isFinite(v)) {
+                    item.strokeWidth = clamp(v);
+                }
                 renderCurves();
-            });
-            const thickValue = document.createElement("span");
-            thickValue.className = "thickness-value";
-            thickValue.textContent = (item.strokeWidth || 1.0).toFixed(1);
-            const btnPlus = document.createElement("button");
-            btnPlus.className = "thickness-btn";
-            btnPlus.textContent = "+";
-            btnPlus.title = "Zwiększ grubość kreski (klawisz =)";
-            btnPlus.addEventListener("click", (e) => {
-                e.stopPropagation();
-                item.strokeWidth = Math.min(10, Math.round((item.strokeWidth + 0.1) * 10) / 10);
-                renderCurves();
-            });
-            thickGroup.appendChild(btnMinus);
-            thickGroup.appendChild(thickValue);
-            thickGroup.appendChild(btnPlus);
-            thickContainer.appendChild(thickGroup);
+            };
+            if (isExpanded) {
+                // [− +]  [↺]  [1.0 input]
+                const pill = document.createElement("div");
+                pill.className = "thickness-pill";
+                const btnMinus = document.createElement("button");
+                btnMinus.type = "button";
+                btnMinus.className = "thickness-pill-btn";
+                btnMinus.textContent = "–";
+                btnMinus.title = "Zmniejsz grubość kreski (klawisz -)";
+                btnMinus.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    commitValue(currentValue - 0.1);
+                });
+                const btnPlus = document.createElement("button");
+                btnPlus.type = "button";
+                btnPlus.className = "thickness-pill-btn";
+                btnPlus.textContent = "+";
+                btnPlus.title = "Zwiększ grubość kreski (klawisz =)";
+                btnPlus.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    commitValue(currentValue + 0.1);
+                });
+                pill.appendChild(btnMinus);
+                pill.appendChild(btnPlus);
+                thickContainer.appendChild(pill);
+                const resetBtn = document.createElement("button");
+                resetBtn.type = "button";
+                resetBtn.className = "thickness-reset-btn";
+                resetBtn.title = "Resetuj grubość tej serii do 1.0";
+                resetBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>';
+                resetBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    commitValue(1.0);
+                });
+                thickContainer.appendChild(resetBtn);
+                const input = document.createElement("input");
+                input.type = "number";
+                input.className = "thickness-input";
+                input.min = "0.1";
+                input.max = "10";
+                input.step = "0.1";
+                input.value = currentValue.toFixed(1);
+                input.title = "Wpisz grubość (0.1–10) i naciśnij Enter";
+                input.addEventListener("click", (e) => e.stopPropagation());
+                input.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitValue(parseFloat(input.value));
+                        activeThicknessId = null;
+                        renderCurves();
+                    } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        activeThicknessId = null;
+                        renderCurves();
+                    }
+                });
+                input.addEventListener("blur", () => {
+                    commitValue(parseFloat(input.value));
+                });
+                thickContainer.appendChild(input);
+                // Autofocus + select on next frame so it survives the re-render
+                requestAnimationFrame(() => {
+                    input.focus();
+                    input.select();
+                });
+            } else {
+                const display = document.createElement("button");
+                display.type = "button";
+                display.className = "thickness-display";
+                display.textContent = currentValue.toFixed(1);
+                display.title = "Kliknij, aby edytować grubość kreski";
+                display.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    activeThicknessId = item.id;
+                    renderCurves();
+                });
+                thickContainer.appendChild(display);
+            }
             row.appendChild(thickContainer);
             // 4. Visibility button (eye)
             const visibilityBtn = document.createElement("button");
@@ -2440,6 +2615,13 @@ function init() {
             renderCurves();
         });
     }
+    // Dismiss expanded thickness control when clicking outside any .thickness-container
+    document.addEventListener("mousedown", (e) => {
+        if (activeThicknessId === null) return;
+        if (e.target.closest(".thickness-container")) return;
+        activeThicknessId = null;
+        renderCurves();
+    });
     // Układ naming logic
     const layoutNameContainer = document.getElementById("layout-name-container");
     const layoutNameText = document.getElementById("layout-name-text");
