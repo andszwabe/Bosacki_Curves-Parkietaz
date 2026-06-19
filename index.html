@@ -1236,7 +1236,7 @@ textarea:focus {
             </svg>
             <span>Kolor</span>
           </button>
-          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)" style="margin-left: auto;">
+          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0). Gdy popover grubości jest otwarty: resetuje tylko tę serię.&#10;klawisz: [ T ]" style="margin-left: auto;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
           <button id="visibility-all-btn" class="btn btn-secondary btn-small btn-actions-square" title="Pokaż / Ukryj wszystkie serie&#10;klawisz: [ H ]">
@@ -1324,7 +1324,7 @@ textarea:focus {
             </div>
           </div>
           <div class="settings-footer">
-            <button id="presets-btn" class="btn btn-secondary btn-small" title="Otwórz okno zapisanych presetów arkusza">Zapisz / Załaduj</button>
+            <button id="presets-btn" class="btn btn-secondary btn-small" title="Otwórz okno zapisanych presetów arkusza&#10;klawisz: [ P ]">Zapisz / Załaduj</button>
           </div>
         </div>
 
@@ -1354,14 +1354,14 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka">
+        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka&#10;klawisz: [ C ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
           <span id="copy-btn-text">Kopiuj</span>
         </button>
-        <button id="download-btn" class="btn btn-primary" disabled title="Pobierz wszystkie widoczne serie jako plik (lub kilka plików przy zaznaczonej opcji Osobno)">
+        <button id="download-btn" class="btn btn-primary" disabled title="Pobierz wszystkie widoczne serie jako plik (lub kilka plików przy zaznaczonej opcji Osobno)&#10;klawisz: [ D ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -2432,16 +2432,19 @@ function init() {
                 row.style.borderWidth = '2px';
                 row.classList.add("selected");
             }
+            // Whole-row click toggles selection; control buttons (O/I/R/IR, eye,
+            // thickness pill, transformation group) call e.stopPropagation() so
+            // they don't double-fire. The number span (numSpan) also stops
+            // propagation because its click is the dedicated copy-to-clipboard
+            // action.
+            row.addEventListener("click", () => {
+                item.selected = !item.selected;
+                renderCurves();
+            });
             // 1. Info container (Number + label)
             const info = document.createElement("div");
             info.className = "series-legend-info";
             info.style.color = colorMode === 'color' ? item.color : "var(--text-primary)";
-            // Row Selection
-            info.addEventListener("click", (e) => {
-                e.stopPropagation();
-                item.selected = !item.selected;
-                renderCurves();
-            });
             const numSpan = document.createElement("span");
             numSpan.className = "series-legend-num";
             numSpan.textContent = `Seria ${idx + 1}:`;
@@ -3187,6 +3190,35 @@ function init() {
                 appState.series.forEach(s => s.visible = !s.visible);
             }
             renderCurves();
+        }
+        else if (key === 'D') {
+            // Pobierz wszystko — same path as clicking download-btn.
+            e.preventDefault();
+            const downloadBtnEl = document.getElementById("download-btn");
+            if (downloadBtnEl && !downloadBtnEl.disabled) downloadBtnEl.click();
+        }
+        else if (key === 'C') {
+            // Kopiuj — same path as clicking copy-btn.
+            e.preventDefault();
+            const copyBtnEl = document.getElementById("copy-btn");
+            if (copyBtnEl && !copyBtnEl.disabled) copyBtnEl.click();
+        }
+        else if (key === 'T') {
+            // Thickness reset. If a popover is open, reset that series; otherwise master-reset all.
+            e.preventDefault();
+            if (activeThicknessId !== null) {
+                const target = appState.series.find(s => s.id === activeThicknessId);
+                if (target) target.strokeWidth = 1.0;
+            } else {
+                appState.series.forEach(s => { s.strokeWidth = 1.0; });
+                activeThicknessId = null;
+            }
+            renderCurves();
+        }
+        else if (key === 'P') {
+            e.preventDefault();
+            const presetsBtnEl = document.getElementById("presets-btn");
+            if (presetsBtnEl && !presetsBtnEl.disabled) presetsBtnEl.click();
         }
     });
     window.addEventListener("keyup", (e) => {
