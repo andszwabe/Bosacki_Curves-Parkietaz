@@ -1,6 +1,6 @@
 {
   "name": "parkietaz-app",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "App for generating Piotr Bosacki curves (parkietaż)",
   "main": "dist/renderer.js",
   "scripts": {
