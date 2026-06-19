@@ -1226,7 +1226,7 @@ textarea:focus {
         </div>
         <div id="error-display" class="error-box hidden"></div>
         <div class="series-actions-row">
-          <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie)&#10;[klawisz: 0]">
+          <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie)&#10;klawisz: [ 0 ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </button>
           <button id="color-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb kolorów (kolor / mono)">
@@ -1377,7 +1377,7 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów&#10;[klawisz: B]">
+        <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów&#10;klawisz: [ B ]">
           <span class="swirl-icon">𖦹</span>
           <span>Biblioteka</span>
         </button>
@@ -1396,14 +1396,14 @@ textarea:focus {
     <div class="modal-container">
       <div class="modal-header">
         <h2>Biblioteka układów</h2>
-        <button id="modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;[klawisz: Esc]">&times;</button>
+        <button id="modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;klawisz: [ Esc ]">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Save Layout Section -->
         <div class="save-layout-section">
           <div class="save-input-row">
             <input type="text" id="save-layout-name" placeholder="Nazwa układu">
-            <button id="save-layout-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżącą notację jako układ w bibliotece&#10;[klawisz: Enter]">Zapisz</button>
+            <button id="save-layout-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżącą notację jako układ w bibliotece&#10;klawisz: [ Enter ]">Zapisz</button>
           </div>
           <div id="save-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
         </div>
@@ -1427,14 +1427,14 @@ textarea:focus {
     <div class="modal-container">
       <div class="modal-header">
         <h2>Presety</h2>
-        <button id="presets-modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;[klawisz: Esc]">&times;</button>
+        <button id="presets-modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;klawisz: [ Esc ]">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Save Preset Section -->
         <div class="save-layout-section">
           <div class="save-input-row">
             <input type="text" id="save-preset-name" placeholder="Nazwa presetu">
-            <button id="save-preset-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżące ustawienia arkusza jako preset&#10;[klawisz: Enter]">Zapisz</button>
+            <button id="save-preset-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżące ustawienia arkusza jako preset&#10;klawisz: [ Enter ]">Zapisz</button>
           </div>
           <div id="save-preset-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
         </div>
@@ -2514,7 +2514,7 @@ function init() {
                 btnMinus.type = "button";
                 btnMinus.className = "thickness-pill-btn";
                 btnMinus.textContent = "–";
-                btnMinus.title = "Zmniejsz grubość kreski\n[klawisz: -]";
+                btnMinus.title = "Zmniejsz grubość kreski\nklawisz: [ - ]";
                 btnMinus.addEventListener("click", (e) => {
                     e.stopPropagation();
                     commitValue(currentValue - 0.1);
@@ -2523,7 +2523,7 @@ function init() {
                 btnPlus.type = "button";
                 btnPlus.className = "thickness-pill-btn";
                 btnPlus.textContent = "+";
-                btnPlus.title = "Zwiększ grubość kreski\n[klawisz: =]";
+                btnPlus.title = "Zwiększ grubość kreski\nklawisz: [ + ]";
                 btnPlus.addEventListener("click", (e) => {
                     e.stopPropagation();
                     commitValue(currentValue + 0.1);
