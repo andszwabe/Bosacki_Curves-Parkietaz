@@ -733,12 +733,13 @@ textarea:focus {
   display: flex;
   align-items: center;
   min-height: 2.4rem;
+  font-size: 1.55rem;
 }
 
 .layout-name-display {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.55rem;
+  font-size: inherit;
   color: var(--text-primary);
   line-height: 1.2;
   display: flex;
@@ -756,7 +757,7 @@ textarea:focus {
   align-items: baseline;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.55rem;
+  font-size: inherit;
   color: var(--text-primary);
   line-height: 1.2;
   width: 100%;
@@ -768,6 +769,15 @@ textarea:focus {
 
 .layout-name-container.editing .layout-name-edit-wrapper {
   display: flex;
+}
+
+.layout-name-mirror {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.55rem;
 }
 
 .layout-name-input {
@@ -1134,6 +1144,7 @@ textarea:focus {
           <span id="layout-name-cursor" class="blinking-cursor">_</span>
         </div>
       </div>
+      <span id="layout-name-mirror" class="layout-name-mirror"></span>
 
       <div id="warning-display" class="warning-box hidden"></div>
 
@@ -2445,10 +2456,32 @@ function init() {
     const layoutNameText = document.getElementById("layout-name-text");
     const layoutNameInput = document.getElementById("layout-name-input");
     const layoutNameCursor = document.getElementById("layout-name-cursor");
+    const layoutNameMirror = document.getElementById("layout-name-mirror");
+    function adjustLayoutNameFontSize() {
+        if (!layoutNameContainer || !layoutNameMirror) return;
+        let text = "";
+        if (layoutNameContainer.classList.contains("editing")) {
+            text = "U " + (layoutNameInput ? layoutNameInput.value : "");
+        } else {
+            text = "U " + (appState.ukladName || getTimestampString());
+        }
+        layoutNameMirror.textContent = text;
+        const textWidth = layoutNameMirror.offsetWidth;
+        const containerWidth = layoutNameContainer.offsetWidth;
+        if (textWidth > containerWidth && containerWidth > 0) {
+            const scale = containerWidth / textWidth;
+            // Limit minimum size to 0.7rem
+            const newSize = Math.max(0.7, 1.55 * scale);
+            layoutNameContainer.style.fontSize = `${newSize}rem`;
+        } else {
+            layoutNameContainer.style.fontSize = "1.55rem";
+        }
+    }
     function updateLayoutNameDisplay() {
         if (layoutNameText) {
             layoutNameText.textContent = appState.ukladName || getTimestampString();
         }
+        adjustLayoutNameFontSize();
     }
     function enterLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2461,6 +2494,7 @@ function init() {
         if (layoutNameCursor) {
             layoutNameCursor.style.display = 'inline-block';
         }
+        adjustLayoutNameFontSize();
     }
     function exitLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2495,6 +2529,7 @@ function init() {
                 // Position cursor after text - inline CSS offset
                 layoutNameCursor.style.display = 'none';
             }
+            adjustLayoutNameFontSize();
         });
         layoutNameInput.addEventListener("blur", () => {
             // Don't exit immediately — let click on container re-focus first
@@ -2515,6 +2550,7 @@ function init() {
             }
         }
     });
+    window.addEventListener("resize", adjustLayoutNameFontSize);
     // Initialize display
     updateLayoutNameDisplay();
     // Copy button listener
