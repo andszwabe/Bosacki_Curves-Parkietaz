@@ -1236,7 +1236,7 @@ textarea:focus {
             </svg>
             <span>Kolor</span>
           </button>
-          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)" style="margin-left: auto;">
+          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)&#10;klawisze: [ - ] + [ + ] razem (gdy żadna seria nie jest zaznaczona)" style="margin-left: auto;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
           <button id="visibility-all-btn" class="btn btn-secondary btn-small btn-actions-square" title="Pokaż / Ukryj wszystkie serie&#10;klawisz: [ H ]">
@@ -1324,7 +1324,7 @@ textarea:focus {
             </div>
           </div>
           <div class="settings-footer">
-            <button id="presets-btn" class="btn btn-secondary btn-small" title="Otwórz okno zapisanych presetów arkusza&#10;klawisz: [ P ]">Zapisz / Załaduj</button>
+            <button id="presets-btn" class="btn btn-secondary btn-small" title="Otwórz okno zapisanych presetów arkusza&#10;klawisz: [ P ]">Zapisz / Załaduj Preset</button>
           </div>
         </div>
 
@@ -2412,7 +2412,12 @@ function init() {
         // Update global action buttons state
         if (visibilityAllBtn) {
             const anyVisible = appState.series.some(s => s.visible);
-            visibilityAllBtn.title = anyVisible ? "Ukryj wszystkie serie" : "Pokaż wszystkie serie";
+            // State-aware icon: open eye when any series is visible (next click = hide all),
+            // crossed-eye when everything is hidden (next click = show all).
+            visibilityAllBtn.innerHTML = getEyeIcon(anyVisible);
+            visibilityAllBtn.title = (anyVisible
+                ? "Ukryj wszystkie serie"
+                : "Pokaż wszystkie serie") + "\nklawisz: [ H ]";
         }
         if (selectNoneBtn) {
             const anySelected = appState.series.some(s => s.selected);
@@ -3192,15 +3197,9 @@ function init() {
             toggleViewMode();
         }
         else if (key === 'H') {
+            // Mirror the action-row 'visibility-all' button: mass toggle.
             e.preventDefault();
-            const selectedSeries = appState.series.filter(s => s.selected);
-            if (selectedSeries.length > 0) {
-                selectedSeries.forEach(s => s.visible = !s.visible);
-            }
-            else {
-                appState.series.forEach(s => s.visible = !s.visible);
-            }
-            renderCurves();
+            if (visibilityAllBtn && !visibilityAllBtn.disabled) visibilityAllBtn.click();
         }
         else if (key === 'D') {
             // Pobierz wszystko — same path as clicking download-btn.
