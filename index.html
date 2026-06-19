@@ -742,12 +742,15 @@ textarea:focus {
   display: flex;
   align-items: center;
   min-height: 2.4rem;
+  /* Base size; adjustLayoutNameFontSize() may scale this down to fit. */
+  font-size: 1.55rem;
+  overflow: hidden;
 }
 
 .layout-name-display {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.55rem;
+  font-size: inherit;
   color: var(--text-primary);
   line-height: 1.2;
   display: flex;
@@ -765,7 +768,7 @@ textarea:focus {
   align-items: baseline;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.55rem;
+  font-size: inherit;
   color: var(--text-primary);
   line-height: 1.2;
   width: 100%;
@@ -777,6 +780,21 @@ textarea:focus {
 
 .layout-name-container.editing .layout-name-edit-wrapper {
   display: flex;
+}
+
+/* Off-screen mirror used to measure rendered text width at the unscaled
+   1.55rem baseline; never visible, never affects layout. */
+.layout-name-mirror {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  left: -9999px;
+  top: -9999px;
 }
 
 .layout-name-input {
@@ -1204,14 +1222,14 @@ textarea:focus {
         <label>Notacja łuków</label>
         <div class="textarea-container">
           <div id="notation-backdrop" class="textarea-backdrop"></div>
-          <textarea id="notation-textarea" placeholder="Wklej lub wpisz notacje (separatory: spacje, nowa linia, np. 1p2p 3l4l lub 1. 1p2p, • 4l5l)"></textarea>
+          <textarea id="notation-textarea" title="Pole notacji łuków. Każda linia / fragment to jedna seria. Format: liczba 1–32 + L lub P, np. 1P2P3L4L" placeholder="Wklej lub wpisz notacje (separatory: spacje, nowa linia, np. 1p2p 3l4l lub 1. 1p2p, • 4l5l)"></textarea>
         </div>
         <div id="error-display" class="error-box hidden"></div>
         <div class="series-actions-row">
           <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie / klawisz 0)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </button>
-          <button id="color-mode-btn" class="btn btn-secondary btn-small">
+          <button id="color-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb kolorów (kolor / mono)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="2" x2="12" y2="22"></line>
@@ -1228,7 +1246,7 @@ textarea:focus {
         <div id="series-legend" class="series-legend-list"></div>
       </div>
 
-      <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle">Tryb Relatywny</button>
+      <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle" title="Przełącz między Trybem Relatywnym (dopasowanie do podglądu) a Absolutnym (fizyczne wymiary arkusza)">Tryb Relatywny</button>
 
       <!-- Układ naming field -->
       <div id="layout-name-container" class="layout-name-container" title="Kliknij, aby nazwać układ">
@@ -1240,6 +1258,7 @@ textarea:focus {
           <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" />
         </div>
       </div>
+      <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
 
       <div id="warning-display" class="warning-box hidden"></div>
 
@@ -1305,7 +1324,7 @@ textarea:focus {
             </div>
           </div>
           <div class="settings-footer">
-            <button id="presets-btn" class="btn btn-secondary btn-small">Zapisz / Załaduj</button>
+            <button id="presets-btn" class="btn btn-secondary btn-small" title="Otwórz okno zapisanych presetów arkusza">Zapisz / Załaduj</button>
           </div>
         </div>
 
@@ -1335,14 +1354,14 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="copy-btn" class="btn btn-secondary" disabled>
+        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
           <span id="copy-btn-text">Kopiuj</span>
         </button>
-        <button id="download-btn" class="btn btn-primary" disabled>
+        <button id="download-btn" class="btn btn-primary" disabled title="Pobierz wszystkie widoczne serie jako plik (lub kilka plików przy zaznaczonej opcji Osobno)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -1350,7 +1369,7 @@ textarea:focus {
           </svg>
           <span id="download-btn-text">Pobierz wszystko</span>
         </button>
-        <label class="checkbox-container download-split-toggle">
+        <label class="checkbox-container download-split-toggle" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <input type="checkbox" id="download-split">
           <span>Osobno</span>
         </label>
@@ -1358,7 +1377,7 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="library-btn" class="btn btn-secondary">
+        <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów (klawisz B)">
           <span class="swirl-icon">𖦹</span>
           <span>Biblioteka</span>
         </button>
@@ -1377,14 +1396,14 @@ textarea:focus {
     <div class="modal-container">
       <div class="modal-header">
         <h2>Biblioteka układów</h2>
-        <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+        <button id="modal-close-btn" class="modal-close-btn" title="Zamknij okno (Esc)">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Save Layout Section -->
         <div class="save-layout-section">
           <div class="save-input-row">
             <input type="text" id="save-layout-name" placeholder="Nazwa układu">
-            <button id="save-layout-btn" class="btn btn-primary btn-small save-btn-narrow">Zapisz</button>
+            <button id="save-layout-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżącą notację jako układ w bibliotece (Enter)">Zapisz</button>
           </div>
           <div id="save-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
         </div>
@@ -1398,7 +1417,7 @@ textarea:focus {
         </div>
       </div>
       <div class="modal-footer">
-        <button id="import-layouts-btn" class="btn btn-primary" disabled>Importuj zaznaczone układy z Biblioteki</button>
+        <button id="import-layouts-btn" class="btn btn-primary" disabled title="Wstaw zaznaczone układy do pola notacji jako kolejne serie">Importuj zaznaczone układy z Biblioteki</button>
       </div>
     </div>
   </div>
@@ -1408,14 +1427,14 @@ textarea:focus {
     <div class="modal-container">
       <div class="modal-header">
         <h2>Presety</h2>
-        <button id="presets-modal-close-btn" class="modal-close-btn">&times;</button>
+        <button id="presets-modal-close-btn" class="modal-close-btn" title="Zamknij okno (Esc)">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Save Preset Section -->
         <div class="save-layout-section">
           <div class="save-input-row">
             <input type="text" id="save-preset-name" placeholder="Nazwa presetu">
-            <button id="save-preset-btn" class="btn btn-primary btn-small save-btn-narrow">Zapisz</button>
+            <button id="save-preset-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżące ustawienia arkusza jako preset (Enter)">Zapisz</button>
           </div>
           <div id="save-preset-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
         </div>
@@ -2426,7 +2445,7 @@ function init() {
             const numSpan = document.createElement("span");
             numSpan.className = "series-legend-num";
             numSpan.textContent = `Seria ${idx + 1}:`;
-            numSpan.title = "Zaznacz/odznacz serię. Kliknij numer, aby skopiować notację.";
+            numSpan.title = "Kliknięcie zaznacza/odznacza serię; kliknięcie w numer kopiuje notację do schowka";
             numSpan.addEventListener("click", (e) => {
                 e.stopPropagation();
                 navigator.clipboard.writeText(item.transformedNotation).then(() => {
@@ -2569,7 +2588,7 @@ function init() {
             // 4. Visibility button (eye)
             const visibilityBtn = document.createElement("button");
             visibilityBtn.className = "btn-icon";
-            visibilityBtn.title = "Włącz/Wyłącz widoczność";
+            visibilityBtn.title = "Włącz / wyłącz widoczność tej serii";
             visibilityBtn.innerHTML = getEyeIcon(item.visible);
             visibilityBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -2640,10 +2659,35 @@ function init() {
     const layoutNameContainer = document.getElementById("layout-name-container");
     const layoutNameText = document.getElementById("layout-name-text");
     const layoutNameInput = document.getElementById("layout-name-input");
+    const layoutNameMirror = document.getElementById("layout-name-mirror");
+    const LAYOUT_NAME_BASE_REM = 1.55;
+    const LAYOUT_NAME_MIN_REM = 0.7;
+    function adjustLayoutNameFontSize() {
+        if (!layoutNameContainer || !layoutNameMirror) return;
+        // Mirror exactly what the user sees so measurement matches reality.
+        let text;
+        if (layoutNameContainer.classList.contains("editing")) {
+            text = `Układ:\u00a0${layoutNameInput ? layoutNameInput.value : ""}`;
+        } else {
+            const name = (appState.ukladName || "").trim();
+            text = name ? `Układ: ${name}` : "Układ";
+        }
+        layoutNameMirror.textContent = text;
+        const textWidth = layoutNameMirror.offsetWidth;
+        const containerWidth = layoutNameContainer.clientWidth;
+        if (textWidth > containerWidth && containerWidth > 0) {
+            const scale = containerWidth / textWidth;
+            const newSize = Math.max(LAYOUT_NAME_MIN_REM, LAYOUT_NAME_BASE_REM * scale);
+            layoutNameContainer.style.fontSize = `${newSize}rem`;
+        } else {
+            layoutNameContainer.style.fontSize = `${LAYOUT_NAME_BASE_REM}rem`;
+        }
+    }
     function updateLayoutNameDisplay() {
         if (!layoutNameText) return;
         const name = (appState.ukladName || '').trim();
         layoutNameText.textContent = name ? `Układ: ${name}` : 'Układ';
+        adjustLayoutNameFontSize();
     }
     function enterLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2653,6 +2697,7 @@ function init() {
             layoutNameInput.focus();
             layoutNameInput.select();
         }
+        adjustLayoutNameFontSize();
     }
     function exitLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2682,6 +2727,7 @@ function init() {
                 exitLayoutNamingMode();
             }
         });
+        layoutNameInput.addEventListener("input", adjustLayoutNameFontSize);
         layoutNameInput.addEventListener("blur", () => {
             // Don't exit immediately — let click on container re-focus first
             setTimeout(() => {
@@ -2701,6 +2747,7 @@ function init() {
             }
         }
     });
+    window.addEventListener("resize", adjustLayoutNameFontSize);
     // Initialize display
     updateLayoutNameDisplay();
     // Copy button listener
