@@ -742,12 +742,15 @@ textarea:focus {
   display: flex;
   align-items: center;
   min-height: 2.4rem;
+  /* Base size; adjustLayoutNameFontSize() may scale this down to fit. */
+  font-size: 1.55rem;
+  overflow: hidden;
 }
 
 .layout-name-display {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.55rem;
+  font-size: inherit;
   color: var(--text-primary);
   line-height: 1.2;
   display: flex;
@@ -765,7 +768,7 @@ textarea:focus {
   align-items: baseline;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.55rem;
+  font-size: inherit;
   color: var(--text-primary);
   line-height: 1.2;
   width: 100%;
@@ -777,6 +780,21 @@ textarea:focus {
 
 .layout-name-container.editing .layout-name-edit-wrapper {
   display: flex;
+}
+
+/* Off-screen mirror used to measure rendered text width at the unscaled
+   1.55rem baseline; never visible, never affects layout. */
+.layout-name-mirror {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  left: -9999px;
+  top: -9999px;
 }
 
 .layout-name-input {
@@ -1240,6 +1258,7 @@ textarea:focus {
           <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" />
         </div>
       </div>
+      <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
 
       <div id="warning-display" class="warning-box hidden"></div>
 
@@ -2640,10 +2659,35 @@ function init() {
     const layoutNameContainer = document.getElementById("layout-name-container");
     const layoutNameText = document.getElementById("layout-name-text");
     const layoutNameInput = document.getElementById("layout-name-input");
+    const layoutNameMirror = document.getElementById("layout-name-mirror");
+    const LAYOUT_NAME_BASE_REM = 1.55;
+    const LAYOUT_NAME_MIN_REM = 0.7;
+    function adjustLayoutNameFontSize() {
+        if (!layoutNameContainer || !layoutNameMirror) return;
+        // Mirror exactly what the user sees so measurement matches reality.
+        let text;
+        if (layoutNameContainer.classList.contains("editing")) {
+            text = `Układ:\u00a0${layoutNameInput ? layoutNameInput.value : ""}`;
+        } else {
+            const name = (appState.ukladName || "").trim();
+            text = name ? `Układ: ${name}` : "Układ";
+        }
+        layoutNameMirror.textContent = text;
+        const textWidth = layoutNameMirror.offsetWidth;
+        const containerWidth = layoutNameContainer.clientWidth;
+        if (textWidth > containerWidth && containerWidth > 0) {
+            const scale = containerWidth / textWidth;
+            const newSize = Math.max(LAYOUT_NAME_MIN_REM, LAYOUT_NAME_BASE_REM * scale);
+            layoutNameContainer.style.fontSize = `${newSize}rem`;
+        } else {
+            layoutNameContainer.style.fontSize = `${LAYOUT_NAME_BASE_REM}rem`;
+        }
+    }
     function updateLayoutNameDisplay() {
         if (!layoutNameText) return;
         const name = (appState.ukladName || '').trim();
         layoutNameText.textContent = name ? `Układ: ${name}` : 'Układ';
+        adjustLayoutNameFontSize();
     }
     function enterLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2653,6 +2697,7 @@ function init() {
             layoutNameInput.focus();
             layoutNameInput.select();
         }
+        adjustLayoutNameFontSize();
     }
     function exitLayoutNamingMode() {
         if (!layoutNameContainer) return;
@@ -2682,6 +2727,7 @@ function init() {
                 exitLayoutNamingMode();
             }
         });
+        layoutNameInput.addEventListener("input", adjustLayoutNameFontSize);
         layoutNameInput.addEventListener("blur", () => {
             // Don't exit immediately — let click on container re-focus first
             setTimeout(() => {
@@ -2701,6 +2747,7 @@ function init() {
             }
         }
     });
+    window.addEventListener("resize", adjustLayoutNameFontSize);
     // Initialize display
     updateLayoutNameDisplay();
     // Copy button listener
