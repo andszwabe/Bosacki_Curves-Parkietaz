@@ -1236,7 +1236,7 @@ textarea:focus {
             </svg>
             <span>Kolor</span>
           </button>
-          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0). Gdy popover grubości jest otwarty: resetuje tylko tę serię.&#10;klawisz: [ T ]" style="margin-left: auto;">
+          <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)" style="margin-left: auto;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
           <button id="visibility-all-btn" class="btn btn-secondary btn-small btn-actions-square" title="Pokaż / Ukryj wszystkie serie&#10;klawisz: [ H ]">
@@ -2521,7 +2521,7 @@ function init() {
                 btnMinus.type = "button";
                 btnMinus.className = "thickness-pill-btn";
                 btnMinus.textContent = "–";
-                btnMinus.title = "Zmniejsz grubość kreski\nklawisz: [ - ]";
+                btnMinus.title = "Zmniejsz grubość kreski\nklawisz: [ - ]\n[ - ] + [ + ] razem = reset do 1.0";
                 btnMinus.addEventListener("click", (e) => {
                     e.stopPropagation();
                     commitValue(currentValue - 0.1);
@@ -2530,7 +2530,7 @@ function init() {
                 btnPlus.type = "button";
                 btnPlus.className = "thickness-pill-btn";
                 btnPlus.textContent = "+";
-                btnPlus.title = "Zwiększ grubość kreski\nklawisz: [ + ]";
+                btnPlus.title = "Zwiększ grubość kreski\nklawisz: [ + ]\n[ - ] + [ + ] razem = reset do 1.0";
                 btnPlus.addEventListener("click", (e) => {
                     e.stopPropagation();
                     commitValue(currentValue + 0.1);
@@ -3101,12 +3101,14 @@ function init() {
     // Chorded Keyboard Shortcuts Manager
     const pressedDigits = new Set();
     const pressedActions = new Set();
+    const pressedThickness = new Set(); // tracks which of '-' / '=' is currently held
     let firstDigitPressed = null;
     let firstActionPressed = null;
     // Clear keyboard states when window loses focus
     window.addEventListener("blur", () => {
         pressedDigits.clear();
         pressedActions.clear();
+        pressedThickness.clear();
         firstDigitPressed = null;
         firstActionPressed = null;
     });
@@ -3125,16 +3127,25 @@ function init() {
         if (e.ctrlKey || e.metaKey || e.altKey) {
             return;
         }
-        // Thickness shortcuts: - (minus) and = (equal/plus)
+        // Thickness shortcuts: - and = (Bosacki's '− + plus razem' = reset to 1.0).
+        // If the other key is already held when this one fires, do a reset instead of a step.
+        // Plain single-key press steps; key auto-repeat (e.repeat) keeps stepping.
         if (e.key === "-" || e.key === "=") {
             e.preventDefault();
-            const delta = e.key === "-" ? -0.1 : 0.1;
+            const otherKey = e.key === "-" ? "=" : "-";
             const anySelected = appState.series.some(s => s.selected);
-            appState.series.forEach(s => {
-                if (!anySelected || s.selected) {
-                    s.strokeWidth = Math.min(10, Math.max(0.1, Math.round((s.strokeWidth + delta) * 10) / 10));
-                }
-            });
+            const targets = anySelected ? appState.series.filter(s => s.selected) : appState.series;
+            if (pressedThickness.has(otherKey)) {
+                // Chord — both keys held: reset.
+                targets.forEach(s => { s.strokeWidth = 1.0; });
+            } else {
+                const delta = e.key === "-" ? -0.1 : 0.1;
+                targets.forEach(s => {
+                    s.strokeWidth = Math.min(10, Math.max(0.1,
+                        Math.round((s.strokeWidth + delta) * 10) / 10));
+                });
+            }
+            pressedThickness.add(e.key);
             renderCurves();
             return;
         }
@@ -3203,19 +3214,9 @@ function init() {
             const copyBtnEl = document.getElementById("copy-btn");
             if (copyBtnEl && !copyBtnEl.disabled) copyBtnEl.click();
         }
-        else if (key === 'T') {
-            // Thickness reset. If a popover is open, reset that series; otherwise master-reset all.
-            e.preventDefault();
-            if (activeThicknessId !== null) {
-                const target = appState.series.find(s => s.id === activeThicknessId);
-                if (target) target.strokeWidth = 1.0;
-            } else {
-                appState.series.forEach(s => { s.strokeWidth = 1.0; });
-                activeThicknessId = null;
-            }
-            renderCurves();
-        }
         else if (key === 'P') {
+            // Presety — only meaningful in Tryb Absolutny (the button is hidden in Relatywny).
+            if (appState.viewMode !== 'absolute') return;
             e.preventDefault();
             const presetsBtnEl = document.getElementById("presets-btn");
             if (presetsBtnEl && !presetsBtnEl.disabled) presetsBtnEl.click();
@@ -3238,6 +3239,9 @@ function init() {
                 applyActionTransformations();
                 firstActionPressed = null;
             }
+        }
+        if (e.key === "-" || e.key === "=") {
+            pressedThickness.delete(e.key);
         }
     });
     function applyDigitSelection() {
