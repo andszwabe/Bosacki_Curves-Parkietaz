@@ -659,11 +659,46 @@ textarea:focus {
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
 }
 
 .layout-item-row:hover {
   border-color: #94a3b8;
+  background: var(--accent-gray);
+}
+
+.library-search-row {
+  display: flex;
+  margin-bottom: 0.8rem;
+}
+
+.library-search-input {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  background: #ffffff;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.library-search-input:focus {
+  border-color: var(--accent-black);
+}
+
+.layout-item-meta {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.save-confirmation-flash {
+  background: #16a34a !important;
+  color: #ffffff !important;
+  border-color: #16a34a !important;
 }
 
 .layout-checkbox {
@@ -1222,7 +1257,7 @@ textarea:focus {
         <label title="Pole notacji łuków. Każda linia / fragment to jedna seria. Format: liczba 1–32 + L lub P, np. 1P2P3L4L">Notacja łuków</label>
         <div class="textarea-container">
           <div id="notation-backdrop" class="textarea-backdrop"></div>
-          <textarea id="notation-textarea" title="Pole notacji łuków. Każda linia / fragment to jedna seria. Format: liczba 1–32 + L lub P, np. 1P2P3L4L" placeholder="Wklej lub wpisz notacje (separatory: spacje, nowa linia, np. 1p2p 3l4l lub 1. 1p2p, • 4l5l)"></textarea>
+          <textarea id="notation-textarea" placeholder="Każda linia lub fragment to jedna seria. Format: liczba 1–32 + L lub P, np. 1P2P3L4L. Separatory: spacje, nowa linia, np. 1p2p 3l4l lub 1. 1p2p, • 4l5l"></textarea>
         </div>
         <div id="error-display" class="error-box hidden"></div>
         <div class="series-actions-row">
@@ -1377,6 +1412,14 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
+        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span id="save-to-library-btn-text">Zapisz w Bibliotece</span>
+        </button>
         <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów&#10;klawisz: [ B ]">
           <span class="swirl-icon">𖦹</span>
           <span>Biblioteka</span>
@@ -1399,25 +1442,20 @@ textarea:focus {
         <button id="modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;klawisz: [ Esc ]">&times;</button>
       </div>
       <div class="modal-body">
-        <!-- Save Layout Section -->
-        <div class="save-layout-section">
-          <div class="save-input-row">
-            <input type="text" id="save-layout-name" placeholder="Nazwa układu" title="Nazwa pod jaką układ zapisze się w bibliotece.&#10;klawisz: [ Enter ] zapisuje">
-            <button id="save-layout-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżącą notację jako układ w bibliotece&#10;klawisz: [ Enter ]">Zapisz</button>
-          </div>
-          <div id="save-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
+        <!-- Search Bar -->
+        <div class="library-search-row">
+          <input type="text" id="library-search" class="library-search-input" autocomplete="off" spellcheck="false" placeholder="Szukaj po nazwie lub notacji…" title="Filtruje listę zapisanych układów w czasie pisania (po nazwie i notacji)">
         </div>
 
         <!-- Saved Layouts List -->
         <div class="saved-layouts-section">
-          <h3>Zapisane układy</h3>
           <div id="saved-layouts-list" class="layouts-list">
             <!-- Will be populated dynamically by JS -->
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button id="import-layouts-btn" class="btn btn-primary" disabled title="Wstaw zaznaczone układy do pola notacji jako kolejne serie">Importuj zaznaczone układy z Biblioteki</button>
+        <button id="delete-selected-layouts-btn" class="btn btn-secondary" disabled title="Usuń wszystkie zaznaczone układy z Biblioteki">Usuń zaznaczone</button>
       </div>
     </div>
   </div>
@@ -3180,13 +3218,6 @@ function init() {
                 }
             }
         }
-        else if (key === 'S') {
-            e.preventDefault();
-            openLibraryModal();
-            setTimeout(() => {
-                saveLayoutNameInput === null || saveLayoutNameInput === void 0 ? void 0 : saveLayoutNameInput.focus();
-            }, 100);
-        }
         else if (key === 'K' || key === 'M') {
             e.preventDefault();
             colorMode = colorMode === 'color' ? 'mono' : 'color';
@@ -3364,12 +3395,13 @@ function init() {
     const libraryBtn = document.getElementById("library-btn");
     const libraryModal = document.getElementById("library-modal");
     const modalCloseBtn = document.getElementById("modal-close-btn");
-    const saveLayoutBtn = document.getElementById("save-layout-btn");
-    const saveLayoutNameInput = document.getElementById("save-layout-name");
-    const saveErrorEl = document.getElementById("save-error");
     const savedLayoutsListEl = document.getElementById("saved-layouts-list");
-    const importLayoutsBtn = document.getElementById("import-layouts-btn");
+    const librarySearchInput = document.getElementById("library-search");
+    const deleteSelectedBtn = document.getElementById("delete-selected-layouts-btn");
+    const saveToLibraryBtn = document.getElementById("save-to-library-btn");
+    const saveToLibraryBtnText = document.getElementById("save-to-library-btn-text");
     const STORAGE_KEY = "bosacki_saved_layouts";
+    let librarySearchTerm = "";
     function loadSavedLayouts() {
         try {
             const data = localStorage.getItem(STORAGE_KEY);
@@ -3388,31 +3420,88 @@ function init() {
             console.error("Failed to save layouts to storage:", e);
         }
     }
+    /** Returns a name guaranteed not to collide with any existing layout.
+     *  Strategy: 'name', 'name-1', 'name-2', … (per Bosacki's preference). */
+    function generateUniqueLayoutName(baseName) {
+        const layouts = loadSavedLayouts();
+        const existing = new Set(layouts.map(l => l.name.toLowerCase()));
+        if (!existing.has(baseName.toLowerCase())) return baseName;
+        let n = 1;
+        while (existing.has(`${baseName}-${n}`.toLowerCase())) n++;
+        return `${baseName}-${n}`;
+    }
+    /** Saves the current notation to the library under appState.ukladName (or
+     *  a fresh timestamp if empty). Returns the actual saved name (which may
+     *  have been suffixed -1, -2, … to avoid collision). */
+    function saveCurrentLayoutToLibrary() {
+        const notation = textareaEl.value.trim();
+        if (!notation) return null;
+        const baseName = (appState.ukladName || "").trim() || getTimestampString();
+        const finalName = generateUniqueLayoutName(baseName);
+        const layouts = loadSavedLayouts();
+        layouts.push({
+            id: `layout_${Date.now()}`,
+            name: finalName,
+            notation,
+            timestamp: Date.now()
+        });
+        saveSavedLayouts(layouts);
+        return finalName;
+    }
+    /** Formats a timestamp (ms) as 'YYYY-MM-DD HH:MM' for the layout list. */
+    function formatLayoutTimestamp(ms) {
+        const d = new Date(ms);
+        const Y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, '0');
+        const D = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const m = String(d.getMinutes()).padStart(2, '0');
+        return `${Y}-${M}-${D} ${h}:${m}`;
+    }
     function openLibraryModal() {
-        if (libraryModal) {
-            libraryModal.classList.remove("hidden");
-            saveLayoutNameInput.value = "";
-            saveErrorEl.textContent = "";
-            saveErrorEl.classList.add("hidden");
-            refreshLibraryList();
+        if (!libraryModal) return;
+        libraryModal.classList.remove("hidden");
+        if (librarySearchInput) {
+            librarySearchInput.value = "";
+            librarySearchTerm = "";
         }
+        refreshLibraryList();
+        // Focus search so the user can type immediately.
+        setTimeout(() => librarySearchInput && librarySearchInput.focus(), 60);
     }
     function closeLibraryModal() {
-        if (libraryModal) {
-            libraryModal.classList.add("hidden");
-        }
+        if (libraryModal) libraryModal.classList.add("hidden");
+    }
+    function loadLayoutToTextarea(layout) {
+        if (!layout) return;
+        textareaEl.value = layout.notation;
+        // Adopt the layout's name as the current Układ name so subsequent
+        // exports use it directly (matches Bosacki's mental model).
+        appState.ukladName = layout.name;
+        if (typeof updateLayoutNameDisplay === 'function') updateLayoutNameDisplay();
+        renderCurves();
+        closeLibraryModal();
+        startAnimation();
     }
     function refreshLibraryList() {
-        if (!savedLayoutsListEl)
-            return;
+        if (!savedLayoutsListEl) return;
         savedLayoutsListEl.innerHTML = "";
-        const layouts = loadSavedLayouts();
+        const allLayouts = loadSavedLayouts();
+        // Filter by search term (case-insensitive, matches name OR notation)
+        const term = librarySearchTerm.trim().toLowerCase();
+        const layouts = term
+            ? allLayouts.filter(l =>
+                l.name.toLowerCase().includes(term) ||
+                l.notation.toLowerCase().includes(term))
+            : allLayouts.slice();
         if (layouts.length === 0) {
             const emptyDiv = document.createElement("div");
             emptyDiv.className = "layouts-list-empty";
-            emptyDiv.textContent = "Brak zapisanych układów w bibliotece.";
+            emptyDiv.textContent = allLayouts.length === 0
+                ? "Brak zapisanych układów w bibliotece."
+                : "Brak wyników dla tego wyszukiwania.";
             savedLayoutsListEl.appendChild(emptyDiv);
-            importLayoutsBtn.disabled = true;
+            updateDeleteSelectedButtonState();
             return;
         }
         // Sort by timestamp descending (newest first)
@@ -3421,18 +3510,17 @@ function init() {
             const row = document.createElement("div");
             row.className = "layout-item-row";
             row.dataset.id = layout.id;
-            // Checkbox
+            row.title = "Kliknij, aby załadować ten układ do pola notacji";
+            // Whole-row click loads the layout (checkbox click stops propagation).
+            row.addEventListener("click", () => loadLayoutToTextarea(layout));
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
             checkbox.className = "layout-checkbox";
-            checkbox.addEventListener("change", updateImportButtonState);
-            // Info block (clickable to toggle checkbox)
+            checkbox.title = "Zaznacz do masowego usunięcia";
+            checkbox.addEventListener("click", (e) => e.stopPropagation());
+            checkbox.addEventListener("change", updateDeleteSelectedButtonState);
             const info = document.createElement("div");
             info.className = "layout-item-info";
-            info.addEventListener("click", () => {
-                checkbox.checked = !checkbox.checked;
-                updateImportButtonState();
-            });
             const nameSpan = document.createElement("span");
             nameSpan.className = "layout-item-name";
             nameSpan.textContent = layout.name;
@@ -3441,10 +3529,12 @@ function init() {
             previewSpan.textContent = layout.notation;
             info.appendChild(nameSpan);
             info.appendChild(previewSpan);
-            // Delete Button
+            const metaSpan = document.createElement("span");
+            metaSpan.className = "layout-item-meta";
+            metaSpan.textContent = formatLayoutTimestamp(layout.timestamp || 0);
             const deleteBtn = document.createElement("button");
             deleteBtn.className = "btn-icon";
-            deleteBtn.title = "Usuń z biblioteki";
+            deleteBtn.title = "Usuń ten układ z biblioteki";
             deleteBtn.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6"></polyline>
@@ -3454,7 +3544,7 @@ function init() {
         </svg>
       `;
             deleteBtn.addEventListener("click", (e) => {
-                e.stopPropagation(); // Avoid triggering info click/checkbox toggle
+                e.stopPropagation();
                 if (confirm(`Czy na pewno chcesz usunąć układ "${layout.name}"?`)) {
                     const currentLayouts = loadSavedLayouts();
                     const filtered = currentLayouts.filter(l => l.id !== layout.id);
@@ -3464,49 +3554,81 @@ function init() {
             });
             row.appendChild(checkbox);
             row.appendChild(info);
+            row.appendChild(metaSpan);
             row.appendChild(deleteBtn);
             savedLayoutsListEl.appendChild(row);
         });
-        updateImportButtonState();
+        updateDeleteSelectedButtonState();
     }
-    function updateImportButtonState() {
+    function updateDeleteSelectedButtonState() {
+        if (!deleteSelectedBtn) return;
         const checkboxes = savedLayoutsListEl.querySelectorAll(".layout-checkbox");
-        const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-        importLayoutsBtn.disabled = !anyChecked;
+        const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        deleteSelectedBtn.disabled = checkedCount === 0;
+        deleteSelectedBtn.textContent = checkedCount > 1
+            ? `Usuń zaznaczone (${checkedCount})`
+            : "Usuń zaznaczone";
     }
-    if (libraryBtn) {
-        libraryBtn.addEventListener("click", openLibraryModal);
-    }
-    if (modalCloseBtn) {
-        modalCloseBtn.addEventListener("click", closeLibraryModal);
-    }
+    if (libraryBtn) libraryBtn.addEventListener("click", openLibraryModal);
+    if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeLibraryModal);
     if (libraryModal) {
         libraryModal.addEventListener("click", (e) => {
-            if (e.target === libraryModal) {
-                closeLibraryModal();
-            }
+            if (e.target === libraryModal) closeLibraryModal();
+        });
+    }
+    if (librarySearchInput) {
+        librarySearchInput.addEventListener("input", () => {
+            librarySearchTerm = librarySearchInput.value;
+            refreshLibraryList();
+        });
+    }
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener("click", () => {
+            const checkedRows = savedLayoutsListEl.querySelectorAll(".layout-item-row");
+            const idsToDelete = [];
+            checkedRows.forEach(row => {
+                const cb = row.querySelector(".layout-checkbox");
+                if (cb && cb.checked) idsToDelete.push(row.dataset.id);
+            });
+            if (idsToDelete.length === 0) return;
+            const msg = idsToDelete.length === 1
+                ? "Czy na pewno chcesz usunąć ten układ?"
+                : `Czy na pewno chcesz usunąć ${idsToDelete.length} zaznaczonych układów?`;
+            if (!confirm(msg)) return;
+            const layouts = loadSavedLayouts().filter(l => !idsToDelete.includes(l.id));
+            saveSavedLayouts(layouts);
+            refreshLibraryList();
+        });
+    }
+    if (saveToLibraryBtn) {
+        saveToLibraryBtn.addEventListener("click", () => {
+            const finalName = saveCurrentLayoutToLibrary();
+            if (!finalName) return;
+            // Inline green confirmation flash on the button itself
+            const original = saveToLibraryBtnText.textContent;
+            saveToLibraryBtnText.textContent = `Zapisano "${finalName}"`;
+            saveToLibraryBtn.classList.add("save-confirmation-flash");
+            setTimeout(() => {
+                saveToLibraryBtnText.textContent = original;
+                saveToLibraryBtn.classList.remove("save-confirmation-flash");
+            }, 1800);
         });
     }
     // Generic Esc-to-close for any open modal overlay (works for future modals too).
     document.addEventListener("keydown", (e) => {
-        if (e.key !== "Escape")
-            return;
+        if (e.key !== "Escape") return;
         const openModals = document.querySelectorAll(".modal-overlay:not(.hidden)");
-        if (openModals.length === 0)
-            return;
+        if (openModals.length === 0) return;
         // Close only the topmost (last in DOM order) so stacked modals work.
         openModals[openModals.length - 1].classList.add("hidden");
     });
     // Space toggles the animation (same as clicking the canvas), unless the user is
     // typing in a textarea/input or a modal is open.
     document.addEventListener("keydown", (e) => {
-        if (e.key !== " " && e.code !== "Space")
-            return;
+        if (e.key !== " " && e.code !== "Space") return;
         const tag = (e.target && e.target.tagName) || "";
-        if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT")
-            return;
-        if (document.querySelector(".modal-overlay:not(.hidden)"))
-            return;
+        if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+        if (document.querySelector(".modal-overlay:not(.hidden)")) return;
         e.preventDefault();
         if (animationFrameId !== null) {
             renderCurves();
@@ -3515,81 +3637,6 @@ function init() {
             startAnimation();
         }
     });
-    if (saveLayoutBtn) {
-        const submitSaveLayout = () => {
-            saveErrorEl.textContent = "";
-            saveErrorEl.classList.add("hidden");
-            const name = saveLayoutNameInput.value.trim();
-            if (!name) {
-                saveErrorEl.textContent = "Podaj nazwę układu.";
-                saveErrorEl.classList.remove("hidden");
-                return;
-            }
-            const notation = textareaEl.value.trim();
-            if (!notation) {
-                saveErrorEl.textContent = "Pole notacji jest puste. Wpisz coś przed zapisaniem.";
-                saveErrorEl.classList.remove("hidden");
-                return;
-            }
-            const layouts = loadSavedLayouts();
-            const exists = layouts.some(l => l.name.toLowerCase() === name.toLowerCase());
-            if (exists) {
-                if (!confirm(`Układ o nazwie "${name}" już istnieje w bibliotece. Czy chcesz go zastąpić?`)) {
-                    return;
-                }
-            }
-            const filteredLayouts = layouts.filter(l => l.name.toLowerCase() !== name.toLowerCase());
-            filteredLayouts.push({
-                id: `layout_${Date.now()}`,
-                name,
-                notation,
-                timestamp: Date.now()
-            });
-            saveSavedLayouts(filteredLayouts);
-            saveLayoutNameInput.value = "";
-            refreshLibraryList();
-        };
-        saveLayoutBtn.addEventListener("click", submitSaveLayout);
-        if (saveLayoutNameInput) {
-            saveLayoutNameInput.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitSaveLayout();
-                }
-            });
-        }
-    }
-    if (importLayoutsBtn) {
-        importLayoutsBtn.addEventListener("click", () => {
-            const checkedRows = savedLayoutsListEl.querySelectorAll(".layout-item-row");
-            const selectedLayouts = [];
-            const layouts = loadSavedLayouts();
-            checkedRows.forEach(row => {
-                const checkbox = row.querySelector(".layout-checkbox");
-                if (checkbox && checkbox.checked) {
-                    const id = row.dataset.id;
-                    const layout = layouts.find(l => l.id === id);
-                    if (layout) {
-                        selectedLayouts.push(layout);
-                    }
-                }
-            });
-            if (selectedLayouts.length > 0) {
-                // Reverse them so they are appended in chronological order (oldest first)
-                selectedLayouts.reverse();
-                const joinedNotations = selectedLayouts
-                    .map(l => l.notation.trim())
-                    .filter(n => n.length > 0)
-                    .join("\n");
-                if (joinedNotations.length > 0) {
-                    textareaEl.value = joinedNotations;
-                    renderCurves();
-                    closeLibraryModal();
-                    startAnimation();
-                }
-            }
-        });
-    }
     // Presets (Tryb Absolutny — sheet settings) — save / load via localStorage.
     const presetsBtn = document.getElementById("presets-btn");
     const presetsModal = document.getElementById("presets-modal");
