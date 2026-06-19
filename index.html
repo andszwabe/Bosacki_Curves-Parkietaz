@@ -1229,7 +1229,7 @@ textarea:focus {
           <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie)&#10;klawisz: [ 0 ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </button>
-          <button id="color-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb kolorów (kolor / mono)">
+          <button id="color-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb kolorów (kolor / mono)&#10;klawisz: [ K ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="2" x2="12" y2="22"></line>
@@ -1239,14 +1239,14 @@ textarea:focus {
           <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)" style="margin-left: auto;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
-          <button id="visibility-all-btn" class="btn btn-secondary btn-small btn-actions-square" title="Pokaż / Ukryj wszystkie serie">
+          <button id="visibility-all-btn" class="btn btn-secondary btn-small btn-actions-square" title="Pokaż / Ukryj wszystkie serie&#10;klawisz: [ H ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
         <div id="series-legend" class="series-legend-list"></div>
       </div>
 
-      <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle" title="Przełącz między Trybem Relatywnym (dopasowanie do podglądu) a Absolutnym (fizyczne wymiary arkusza)">Tryb Relatywny</button>
+      <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle" title="Przełącz między Trybem Relatywnym (dopasowanie do podglądu) a Absolutnym (fizyczne wymiary arkusza)&#10;klawisz: [ A ]">Tryb Relatywny</button>
 
       <!-- Układ naming field -->
       <div id="layout-name-container" class="layout-name-container" title="Kliknij, aby nazwać układ">
@@ -2445,7 +2445,9 @@ function init() {
             const numSpan = document.createElement("span");
             numSpan.className = "series-legend-num";
             numSpan.textContent = `Seria ${idx + 1}:`;
-            numSpan.title = "Kliknięcie zaznacza/odznacza serię; kliknięcie w numer kopiuje notację do schowka";
+            const seriesNum = idx + 1;
+            const seriesKeyHint = seriesNum <= 9 ? `\nklawisz: [ ${seriesNum} ]` : "";
+            numSpan.title = `Kliknięcie zaznacza/odznacza serię; kliknięcie w numer kopiuje notację do schowka${seriesKeyHint}`;
             numSpan.addEventListener("click", (e) => {
                 e.stopPropagation();
                 navigator.clipboard.writeText(item.transformedNotation).then(() => {
@@ -2588,7 +2590,7 @@ function init() {
             // 4. Visibility button (eye)
             const visibilityBtn = document.createElement("button");
             visibilityBtn.className = "btn-icon";
-            visibilityBtn.title = "Włącz / wyłącz widoczność tej serii";
+            visibilityBtn.title = "Włącz / wyłącz widoczność tej serii\nklawisz: [ H ] (gdy zaznaczona)";
             visibilityBtn.innerHTML = getEyeIcon(item.visible);
             visibilityBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -2601,12 +2603,12 @@ function init() {
     }
     function getTransformationTitle(type) {
         switch (type) {
-            case 'I': return "Inwersja (zamiana L ↔ P)";
-            case 'R': return "Rak (odwrócona kolejność)";
-            case 'RI': return "Inwersja Raka (odwrócona kolejność i zamiana L ↔ P)";
+            case 'I': return "Inwersja (zamiana L ↔ P)\nklawisz: [ I ]";
+            case 'R': return "Rak (odwrócona kolejność)\nklawisz: [ R ]";
+            case 'RI': return "Inwersja Raka (odwrócona kolejność i zamiana L ↔ P)\nklawisze: [ I ] + [ R ]";
             case 'O':
             default:
-                return "Oryginał";
+                return "Oryginał\nklawisz: [ O ]";
         }
     }
     // Event Listeners
