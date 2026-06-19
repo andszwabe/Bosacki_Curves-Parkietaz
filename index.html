@@ -1219,7 +1219,7 @@ textarea:focus {
     <!-- Panel sterowania na dole -->
     <div class="controls-section">
       <div class="input-group">
-        <label>Notacja łuków</label>
+        <label title="Pole notacji łuków. Każda linia / fragment to jedna seria. Format: liczba 1–32 + L lub P, np. 1P2P3L4L">Notacja łuków</label>
         <div class="textarea-container">
           <div id="notation-backdrop" class="textarea-backdrop"></div>
           <textarea id="notation-textarea" title="Pole notacji łuków. Każda linia / fragment to jedna seria. Format: liczba 1–32 + L lub P, np. 1P2P3L4L" placeholder="Wklej lub wpisz notacje (separatory: spacje, nowa linia, np. 1p2p 3l4l lub 1. 1p2p, • 4l5l)"></textarea>
@@ -1255,7 +1255,7 @@ textarea:focus {
         </div>
         <div id="layout-name-edit-wrapper" class="layout-name-edit-wrapper">
           <span class="layout-name-prefix">Układ:&nbsp;</span>
-          <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" />
+          <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę układu (litery, cyfry, spacje). Trafia do nazwy plików eksportu jako U_<nazwa>_S_….&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
         </div>
       </div>
       <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
@@ -1265,8 +1265,8 @@ textarea:focus {
       <div id="absolute-settings-panel" class="settings-card absolute-settings-panel hidden">
           <div class="settings-row">
             <div class="setting-field">
-              <label for="abs-preset">Format (Preset)</label>
-              <select id="abs-preset">
+              <label for="abs-preset" title="Gotowy format arkusza. Wybór ustawia automatycznie Szerokość, Wysokość i Jednostkę.">Format (Preset)</label>
+              <select id="abs-preset" title="Gotowy format arkusza. Wybór ustawia automatycznie Szerokość, Wysokość i Jednostkę.">
                 <option value="4k_uhd" selected>4K UHD (3840x2160 px)</option>
                 <option value="full_hd">Full HD (1920x1080 px)</option>
                 <option value="a4_horizontal">A4 Poziomo (29.7x21 cm)</option>
@@ -1276,8 +1276,8 @@ textarea:focus {
               </select>
             </div>
             <div class="setting-field">
-              <label for="abs-unit">Jednostka</label>
-              <select id="abs-unit">
+              <label for="abs-unit" title="Jednostka miary użyta dla Szerokości, Wysokości, Marginesu i Skali. Zmiana przelicza wszystkie wartości na bieżąco (300 DPI dla px ↔ fizyczne).">Jednostka</label>
+              <select id="abs-unit" title="Jednostka miary użyta dla Szerokości, Wysokości, Marginesu i Skali. Zmiana przelicza wszystkie wartości na bieżąco (300 DPI dla px ↔ fizyczne).">
                 <option value="px">px (piksele)</option>
                 <option value="cm">cm (centymetry)</option>
                 <option value="mm">mm (milimetry)</option>
@@ -1287,38 +1287,38 @@ textarea:focus {
           </div>
           <div class="settings-row">
             <div class="setting-field">
-              <label for="abs-width">Szerokość</label>
-              <input type="number" id="abs-width" value="3840" step="0.1" min="1">
+              <label for="abs-width" title="Szerokość arkusza w wybranej jednostce. Można wpisać wartości dziesiętne (np. 29.7 cm).">Szerokość</label>
+              <input type="number" id="abs-width" value="3840" step="0.1" min="1" title="Szerokość arkusza w wybranej jednostce. Można wpisać wartości dziesiętne (np. 29.7 cm).">
             </div>
             <div class="setting-field">
-              <label for="abs-height">Wysokość</label>
-              <input type="number" id="abs-height" value="2160" step="0.1" min="1">
-            </div>
-          </div>
-          <div class="settings-row">
-            <div class="setting-field">
-              <label for="abs-margin">Margines</label>
-              <input type="number" id="abs-margin" value="150" step="0.1" min="0">
-            </div>
-            <div class="setting-field">
-               <label for="abs-scale">Wielkość łuku o wartości 1</label>
-              <input type="number" id="abs-scale" value="15.36" step="0.01" min="0">
+              <label for="abs-height" title="Wysokość arkusza w wybranej jednostce. Można wpisać wartości dziesiętne.">Wysokość</label>
+              <input type="number" id="abs-height" value="2160" step="0.1" min="1" title="Wysokość arkusza w wybranej jednostce. Można wpisać wartości dziesiętne.">
             </div>
           </div>
           <div class="settings-row">
             <div class="setting-field">
-              <label for="abs-shift-x">Przesunięcie X (%)</label>
-              <input type="number" id="abs-shift-x" value="0" min="-100" max="100" step="1">
+              <label for="abs-margin" title="Margines wewnętrzny arkusza ze wszystkich stron, w wybranej jednostce.">Margines</label>
+              <input type="number" id="abs-margin" value="150" step="0.1" min="0" title="Margines wewnętrzny arkusza ze wszystkich stron, w wybranej jednostce.">
             </div>
             <div class="setting-field">
-              <label for="abs-shift-y">Przesunięcie Y (%)</label>
-              <input type="number" id="abs-shift-y" value="0" min="-100" max="100" step="1">
+               <label for="abs-scale" title="Promień łuku modułu o rozmiarze 1 (najmniejszego). Wszystkie pozostałe łuki skalują się względem niego przez φ^N.">Wielkość łuku o wartości 1</label>
+              <input type="number" id="abs-scale" value="15.36" step="0.01" min="0" title="Promień łuku modułu o rozmiarze 1 (najmniejszego). Wszystkie pozostałe łuki skalują się względem niego przez φ^N.">
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="setting-field">
+              <label for="abs-shift-x" title="Przesunięcie rysunku w poziomie, w procentach szerokości arkusza. Ujemne = w lewo, dodatnie = w prawo.">Przesunięcie X (%)</label>
+              <input type="number" id="abs-shift-x" value="0" min="-100" max="100" step="1" title="Przesunięcie rysunku w poziomie, w procentach szerokości arkusza. Ujemne = w lewo, dodatnie = w prawo.">
+            </div>
+            <div class="setting-field">
+              <label for="abs-shift-y" title="Przesunięcie rysunku w pionie, w procentach wysokości arkusza. Ujemne = w górę, dodatnie = w dół.">Przesunięcie Y (%)</label>
+              <input type="number" id="abs-shift-y" value="0" min="-100" max="100" step="1" title="Przesunięcie rysunku w pionie, w procentach wysokości arkusza. Ujemne = w górę, dodatnie = w dół.">
             </div>
           </div>
           <div class="settings-row">
             <div class="setting-field checkbox-field">
-              <label class="checkbox-container">
-                <input type="checkbox" id="abs-autocenter">
+              <label class="checkbox-container" title="Gdy zaznaczone: rysunek jest automatycznie wycentrowany na arkuszu i Przesunięcia X/Y są ignorowane.">
+                <input type="checkbox" id="abs-autocenter" title="Gdy zaznaczone: rysunek jest automatycznie wycentrowany na arkuszu i Przesunięcia X/Y są ignorowane.">
                 <span>Autocentrowanie</span>
               </label>
             </div>
@@ -1330,10 +1330,10 @@ textarea:focus {
 
       <!-- Ustawienia eksportu -->
       <div id="export-card" class="settings-card export-card hidden">
-        <label>Format pliku</label>
+        <label title="Format pliku eksportu. SVG to wektor (zalecane). PDF tylko w Trybie Absolutnym.">Format pliku</label>
         <div class="export-row">
           <div class="setting-field">
-            <select id="export-format">
+            <select id="export-format" title="Format pliku eksportu. SVG to wektor (zalecane). PDF tylko w Trybie Absolutnym.">
               <option value="svg" selected>SVG (Wektorowy)</option>
               <option value="pdf">PDF (Druk/Wektor)</option>
               <option value="png">PNG (Raster/Przezroczysty)</option>
@@ -1341,12 +1341,12 @@ textarea:focus {
             </select>
           </div>
           <div class="setting-field hidden" id="dpi-group">
-            <label for="export-dpi">Rozdzielczość (DPI)</label>
-            <input type="number" id="export-dpi" value="300" min="72" max="600">
+            <label for="export-dpi" title="Rozdzielczość dla formatów rastrowych (PNG/JPEG). 300 DPI to standard druku.">Rozdzielczość (DPI)</label>
+            <input type="number" id="export-dpi" value="300" min="72" max="600" title="Rozdzielczość dla formatów rastrowych (PNG/JPEG). 300 DPI to standard druku.">
           </div>
           <div class="setting-field checkbox-field" id="bg-checkbox-group">
-            <label class="checkbox-container">
-              <input type="checkbox" id="export-bg" checked>
+            <label class="checkbox-container" title="Gdy zaznaczone: tło pliku jest białe. Gdy odznaczone: tło przezroczyste (dotyczy PNG i SVG).">
+              <input type="checkbox" id="export-bg" checked title="Gdy zaznaczone: tło pliku jest białe. Gdy odznaczone: tło przezroczyste (dotyczy PNG i SVG).">
               <span>Białe tło</span>
             </label>
           </div>
@@ -1370,7 +1370,7 @@ textarea:focus {
           <span id="download-btn-text">Pobierz wszystko</span>
         </button>
         <label class="checkbox-container download-split-toggle" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
-          <input type="checkbox" id="download-split">
+          <input type="checkbox" id="download-split" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <span>Osobno</span>
         </label>
         <div id="stats-display" class="stats">Łuki: 0</div>
@@ -1402,7 +1402,7 @@ textarea:focus {
         <!-- Save Layout Section -->
         <div class="save-layout-section">
           <div class="save-input-row">
-            <input type="text" id="save-layout-name" placeholder="Nazwa układu">
+            <input type="text" id="save-layout-name" placeholder="Nazwa układu" title="Nazwa pod jaką układ zapisze się w bibliotece.&#10;klawisz: [ Enter ] zapisuje">
             <button id="save-layout-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżącą notację jako układ w bibliotece&#10;klawisz: [ Enter ]">Zapisz</button>
           </div>
           <div id="save-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
@@ -1433,7 +1433,7 @@ textarea:focus {
         <!-- Save Preset Section -->
         <div class="save-layout-section">
           <div class="save-input-row">
-            <input type="text" id="save-preset-name" placeholder="Nazwa presetu">
+            <input type="text" id="save-preset-name" placeholder="Nazwa presetu" title="Nazwa pod jaką preset zapisze się w localStorage.&#10;klawisz: [ Enter ] zapisuje">
             <button id="save-preset-btn" class="btn btn-primary btn-small save-btn-narrow" title="Zapisz bieżące ustawienia arkusza jako preset&#10;klawisz: [ Enter ]">Zapisz</button>
           </div>
           <div id="save-preset-error" class="error-box hidden" style="margin-top: 0.4rem;"></div>
@@ -3114,6 +3114,10 @@ function init() {
             return;
         }
         const key = e.key.toUpperCase();
+        // Let the browser keep its default chords (zoom, refresh, find, devtools, etc.).
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+            return;
+        }
         // Thickness shortcuts: - (minus) and = (equal/plus)
         if (e.key === "-" || e.key === "=") {
             e.preventDefault();
