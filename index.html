@@ -610,6 +610,16 @@ textarea:focus {
   font-weight: 600;  /* h2-equivalent weight; .layout-name-* defaults to 700 */
 }
 
+/* Display ↔ edit toggle for the Biblioteka name (mirrors the .layout-name-container
+   rules but scoped to the library variant). */
+.library-name-container.editing .layout-name-display {
+  display: none;
+}
+
+.library-name-container.editing .layout-name-edit-wrapper {
+  display: flex;
+}
+
 .modal-close-btn {
   background: none;
   border: none;
