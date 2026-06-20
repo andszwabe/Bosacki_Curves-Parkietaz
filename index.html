@@ -821,9 +821,17 @@ textarea:focus {
 }
 
 /* ── Układ name field ── */
-.layout-name-container {
+.layout-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin-top: 0.85rem;
   width: 100%;
+}
+
+.layout-name-container {
+  flex: 1;
+  min-width: 0;  /* allow the flex child to shrink below its intrinsic content width */
   cursor: text;
   user-select: none;
   display: flex;
@@ -1339,17 +1347,33 @@ textarea:focus {
         <div id="series-legend" class="series-legend-list"></div>
       </div>
 
+      <!-- Kopiuj wszystko: between the Seria legend / action controls above and
+           the Tryb Relatywny / Układ block below. Full-width, same height as
+           the other primary action buttons. -->
+      <div class="actions-row">
+        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka&#10;klawisz: [ C ]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="copy-btn-text">Kopiuj wszystko</span>
+        </button>
+      </div>
+
       <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle" title="Przełącz między Trybem Relatywnym (dopasowanie do podglądu) a Absolutnym (fizyczne wymiary arkusza)&#10;klawisz: [ A ]">Tryb Relatywny</button>
 
-      <!-- Układ naming field -->
-      <div id="layout-name-container" class="layout-name-container" title="Kliknij, aby nazwać układ">
-        <div id="layout-name-display" class="layout-name-display">
-          <span id="layout-name-text">Układ</span>
+      <!-- Układ naming field + stats on one line -->
+      <div class="layout-name-row">
+        <div id="layout-name-container" class="layout-name-container" title="Kliknij, aby nazwać układ">
+          <div id="layout-name-display" class="layout-name-display">
+            <span id="layout-name-text">Układ</span>
+          </div>
+          <div id="layout-name-edit-wrapper" class="layout-name-edit-wrapper">
+            <span class="layout-name-prefix">Układ:&nbsp;</span>
+            <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę układu (litery, cyfry, spacje). Trafia do nazwy plików eksportu jako U_<nazwa>_S_….&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
+          </div>
         </div>
-        <div id="layout-name-edit-wrapper" class="layout-name-edit-wrapper">
-          <span class="layout-name-prefix">Układ:&nbsp;</span>
-          <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę układu (litery, cyfry, spacje). Trafia do nazwy plików eksportu jako U_<nazwa>_S_….&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
-        </div>
+        <div id="stats-display" class="stats">Łuki: 0</div>
       </div>
       <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
 
@@ -1447,13 +1471,6 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka&#10;klawisz: [ C ]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          <span id="copy-btn-text">Kopiuj</span>
-        </button>
         <button id="download-btn" class="btn btn-primary" disabled title="Pobierz wszystkie widoczne serie jako plik (lub kilka plików przy zaznaczonej opcji Osobno)&#10;klawisz: [ D ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -1470,7 +1487,6 @@ textarea:focus {
           <input type="checkbox" id="download-animation" title="Gdy zaznaczone: pobiera ZIP z klatkami animacji — łuk po łuku. Każda klatka N zawiera pierwsze N łuków. Łączy się z Osobno (każda Seria w osobnym podfolderze).">
           <span>Do animacji</span>
         </label>
-        <div id="stats-display" class="stats">Łuki: 0</div>
       </div>
 
       <div class="actions-row">
