@@ -208,6 +208,16 @@ label {
   flex: none;
 }
 
+/* Keep the icons inside the fixed-width view-toggle buttons at their declared
+   size regardless of label width (Kolor vs. Mono, Smooth vs. Step). Without
+   flex-shrink:0, the SVGs collapse when the label takes more horizontal space. */
+#color-mode-btn svg,
+#anim-mode-btn svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
 .btn.btn-actions-square {
   width: 34px;
   height: 34px;
@@ -242,7 +252,7 @@ textarea, .textarea-backdrop {
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
   font-family: monospace;
-  font-size: 0.9rem;
+  font-size: 0.83rem;
   line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -756,6 +766,12 @@ textarea:focus {
   background: #16a34a !important;
   color: #ffffff !important;
   border-color: #16a34a !important;
+}
+
+.save-warning-flash {
+  background: #f97316 !important;
+  color: #ffffff !important;
+  border-color: #f97316 !important;
 }
 
 .layout-checkbox {
@@ -1362,7 +1378,7 @@ textarea:focus {
            the Tryb Relatywny / Układ block below. Full-width, same height as
            the other primary action buttons. -->
       <div class="actions-row actions-row-spaced-top">
-        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka&#10;klawisz: [ C ]">
+        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj zaznaczone Serie — po transformacjach (Inwersja, Rak, etc.) — jako Notację&#10;klawisz: [ C ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1384,7 +1400,7 @@ textarea:focus {
             <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę układu (litery, cyfry, spacje). Trafia do nazwy plików eksportu jako U_<nazwa>_S_….&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
           </div>
         </div>
-        <div id="stats-display" class="stats">Łuki: 0</div>
+        <div id="stats-display" class="stats" title="Liczba kroków (łuków) w bieżącym układzie. Gdy żadna seria nie jest zaznaczona — łączna suma wszystkich widocznych serii. Gdy któraś seria jest zaznaczona — suma kroków tylko z zaznaczonych serii.">Kroki: 0</div>
       </div>
       <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
 
@@ -1504,7 +1520,7 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …">
+        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …&#10;klawisz: [ Ctrl ] / [ Cmd ] + [ S ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
@@ -1513,7 +1529,10 @@ textarea:focus {
           <span id="save-to-library-btn-text">Zapisz w Bibliotece</span>
         </button>
         <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów&#10;klawisz: [ B ]">
-          <span class="swirl-icon">𖦹</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+          </svg>
           <span>Biblioteka</span>
         </button>
       </div>
@@ -1725,6 +1744,19 @@ function transliterateToAscii(s) {
     return s.normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[łŁđĐøØæÆœŒß]/g, c => explicit[c] || c);
+}
+
+/** Canonicalises a notation string to the dashed form used in the UI.
+ *  Strips any existing separators (hyphens, runs of whitespace within a line),
+ *  upper-cases the chirality letters, then rejoins each `<digits><L|P>` step
+ *  with '-'. Multi-line input is preserved (each line is one Seria). */
+function dashifyNotation(text) {
+    if (!text) return '';
+    return text.split(/\r?\n/).map(line => {
+        const matches = line.match(/(\d+)([lLpP])/g);
+        if (!matches) return line; // leave non-notation lines alone (mostly empty)
+        return matches.map(m => m.replace(/([lLpP])/, c => c.toUpperCase())).join('-');
+    }).join('\n');
 }
 
 /** Returns a sanitized prefix for export filenames based on the current układ name and series. */
@@ -2385,6 +2417,7 @@ function exportAnimationFrames(targets, splitMode) {
         arcs: s.arcs,
         color: s.color,
         notation: s.transformedNotation,
+        strokeWidth: s.strokeWidth || 1.0,
         selected: dimWhenNotSelected ? s.selected : false
     });
     // For each frame at step N, replace each series' arcs with arcs.slice(0, N).
@@ -2489,7 +2522,7 @@ function init() {
     const resetAllThicknessBtn = document.getElementById("reset-all-thickness-btn");
     const selectNoneBtn = document.getElementById("select-none-btn");
     // Initial state with default Seria A loaded in the textarea
-    textareaEl.value = "1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
+    textareaEl.value = dashifyNotation("1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l");
     let animationFrameId = null;
     let animationStartTime = null;
     let animatingPaths = [];
@@ -2711,7 +2744,7 @@ function init() {
             errorEl.textContent = "Wklej lub wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
             errorEl.classList.remove("hidden");
             containerEl.innerHTML = "";
-            statsEl.textContent = "Łuki: 0";
+            statsEl.textContent = "Kroki: 0";
             downloadEl.disabled = true;
             renderLegend();
             return;
@@ -2746,7 +2779,7 @@ function init() {
         }
         if (hasError && activeSeries.length === 0) {
             containerEl.innerHTML = "";
-            statsEl.textContent = "Łuki: 0";
+            statsEl.textContent = "Kroki: 0";
             downloadEl.disabled = true;
             renderLegend();
             return;
@@ -2756,7 +2789,14 @@ function init() {
             const svg = generateSVGElement(activeSeries);
             containerEl.innerHTML = "";
             containerEl.appendChild(svg);
-            statsEl.textContent = `Łuki: ${totalArcs}`;
+            // Selection-aware step count: when any visible series is selected,
+            // count steps from those only; otherwise count steps from every
+            // visible series. Mirrors the Kopiuj / Pobierz selection logic.
+            const anySelectedVisible = activeSeries.some(s => s.selected);
+            const stepsCounted = anySelectedVisible
+                ? activeSeries.filter(s => s.selected).reduce((sum, s) => sum + s.arcs.length, 0)
+                : totalArcs;
+            statsEl.textContent = `Kroki: ${stepsCounted}`;
             const allComplete = activeSeries.every(s => /[lLpP]/.test(s.notation.trim().slice(-1)));
             downloadEl.disabled = !allComplete;
             // Check for margin overflow in Absolute Mode
@@ -2797,7 +2837,7 @@ function init() {
             errorEl.textContent = `Błąd: ${err.message}`;
             errorEl.classList.remove("hidden");
             containerEl.innerHTML = "";
-            statsEl.textContent = "Łuki: 0";
+            statsEl.textContent = "Kroki: 0";
             downloadEl.disabled = true;
         }
         renderLegend();
@@ -2821,12 +2861,11 @@ function init() {
                 : "Pokaż wszystkie serie") + "\nklawisz: [ H ]";
         }
         if (selectNoneBtn) {
-            const anySelected = appState.series.some(s => s.selected);
-            if (!anySelected && appState.series.length > 0) {
-                selectNoneBtn.classList.add("active");
-            } else {
-                selectNoneBtn.classList.remove("active");
-            }
+            // Keep selectNoneBtn visually neutral regardless of selection state.
+            // Removing the 'active' toggle here intentionally: the button is a
+            // stateless action ("reset selection to none") and shouldn't change
+            // colour to indicate state.
+            selectNoneBtn.classList.remove("active");
         }
         legendContainerEl.innerHTML = "";
         appState.series.forEach((item, idx) => {
@@ -2861,7 +2900,7 @@ function init() {
             numSpan.title = `Kliknięcie zaznacza/odznacza serię; kliknięcie w numer kopiuje notację do schowka${seriesKeyHint}`;
             numSpan.addEventListener("click", (e) => {
                 e.stopPropagation();
-                navigator.clipboard.writeText(item.transformedNotation).then(() => {
+                navigator.clipboard.writeText(dashifyNotation(item.transformedNotation)).then(() => {
                     const originalText = numSpan.textContent;
                     numSpan.textContent = "Skopiowano!";
                     numSpan.style.color = "var(--success-color, #16a34a)";
@@ -2878,7 +2917,7 @@ function init() {
             if (item.transformation !== 'O') {
                 parsedSpan.classList.add("transformed");
             }
-            parsedSpan.textContent = item.transformedNotation;
+            parsedSpan.textContent = dashifyNotation(item.transformedNotation);
             info.appendChild(numSpan);
             info.appendChild(parsedSpan);
             row.appendChild(info);
@@ -3023,9 +3062,164 @@ function init() {
         }
     }
     // Event Listeners
-    textareaEl.addEventListener("input", renderCurves);
-    textareaEl.addEventListener("paste", () => {
-        setTimeout(renderCurves, 0);
+    /** Normalises the textarea after a user edit so the dashed step form
+     *  stays consistent. Covers four cases:
+     *    1. Just typed L or P that closes a step → append '-' after it (unless
+     *       a '-' is already there). Works mid-content and at end-of-content.
+     *    2. Just typed a digit right after an L or P (no dash between) →
+     *       insert '-' before the digit. Works mid-content and at end-of-content.
+     *    3. Just backspaced a character leaving a trailing '-' as the last
+     *       char before the caret → delete that orphan dash.
+     *    4. Just deleted a character (forward or backward) and it left a
+     *       malformed step adjacent to the caret — '-[LP]-' (lone letter)
+     *       or '-\d-' (lone digit) or '--' (double dash) — collapse it.
+     *  All operations go through document.execCommand() so they're captured
+     *  by the native undo stack and treated as part of the same logical edit
+     *  as the triggering keystroke. */
+    function maybeNormaliseAfterInput(e) {
+        if (!e) return;
+        const v = textareaEl.value;
+        const caret = textareaEl.selectionStart;
+        if (e.inputType === 'insertText') {
+            const data = e.data;
+            const next = v[caret];  // char immediately after caret (may be undefined at EOC)
+            if (data === 'l' || data === 'L' || data === 'p' || data === 'P') {
+                // Case 1: digit + just-typed L/P → append '-' (unless already there).
+                if (caret >= 2 && /\d/.test(v[caret - 2]) && next !== '-') {
+                    insertViaPipeline('-');
+                }
+            } else if (/^\d$/.test(data || '')) {
+                // Case 2: L/P + just-typed digit → insert '-' BEFORE the digit.
+                if (caret >= 2 && /[lLpP]/.test(v[caret - 2]) && v[caret - 1] === data) {
+                    textareaEl.setSelectionRange(caret - 1, caret - 1);
+                    const ok = insertViaPipeline('-');
+                    if (ok) {
+                        // After execCommand insertText, caret sits between '-' and the digit.
+                        // Step past the digit so further typing continues forward.
+                        textareaEl.setSelectionRange(caret + 1, caret + 1);
+                    } else {
+                        textareaEl.setSelectionRange(caret, caret);
+                    }
+                }
+            }
+        } else if (e.inputType === 'deleteContentBackward'
+                || e.inputType === 'deleteContentForward'
+                || e.inputType === 'deleteContent') {
+            collapseAdjacentDashArtefacts();
+        }
+    }
+    /** After a deletion, sweep small neighbourhoods around the caret for
+     *  malformed-step artefacts and delete them via the editing pipeline so
+     *  the textarea returns to a clean dashed-step form. Handles:
+     *    - trailing orphan dash at end-of-content / before whitespace
+     *    - '--' double dash adjacent to caret
+     *    - '-[LP]-' lone letter (digit was deleted, letter orphaned)
+     *    - '-\d-'  lone digit  (letter was deleted, digit orphaned)
+     *  Each individual repair selects the offending range and calls
+     *  execCommand('delete') so the cleanup is part of the same undo step
+     *  as the triggering keystroke. */
+    function collapseAdjacentDashArtefacts() {
+        // Run up to a few times in case multiple artefacts cascade — but cap so
+        // we never spin forever if execCommand fails silently.
+        for (let pass = 0; pass < 3; pass++) {
+            const v = textareaEl.value;
+            const caret = textareaEl.selectionStart;
+            // Scan a small window around the caret.
+            const winStart = Math.max(0, caret - 3);
+            const winEnd = Math.min(v.length, caret + 3);
+
+            // Pattern 1: trailing dash with nothing after (end-of-content or whitespace)
+            if (caret > 0 && v[caret - 1] === '-' && (caret >= v.length || /\s/.test(v[caret]))) {
+                if (!deleteRange(caret - 1, caret)) return;
+                continue;
+            }
+            // Pattern 2: lone L/P inside dashes — digit was deleted, letter stranded.
+            //   '...X-[LP]-Y...' where X is digit/letter/whitespace/start, Y is digit/whitespace/end.
+            //   Collapse by removing the lone letter AND one neighbouring dash.
+            const leftLetter = v.slice(winStart, winEnd).match(/(^|\W|\d)-([lLpP])(?=-|\s|$)/);
+            if (leftLetter) {
+                const idx = winStart + leftLetter.index + leftLetter[1].length;  // points at the '-'
+                // Remove the '-[LP]' pair (2 chars). Caret should land just before the deletion.
+                if (!deleteRange(idx, idx + 2)) return;
+                continue;
+            }
+            // Pattern 3: lone digit inside dashes — letter was deleted, digit stranded.
+            //   '...X-\d+-Y...' where X is letter/whitespace/start, Y is digit/whitespace/end.
+            //   But wait — '\d-' on its own is a valid in-progress step in the middle of typing,
+            //   so we only collapse when the digit is BOTH preceded by '-' AND followed by '-'.
+            const loneDigit = v.slice(winStart, winEnd).match(/-(\d+)-/);
+            if (loneDigit) {
+                const matchStart = winStart + loneDigit.index;  // points at the leading '-'
+                const matchEnd = matchStart + loneDigit[0].length;  // just past the trailing '-'
+                // Only collapse if the caret is inside or adjacent to this match (i.e. the user
+                // just edited here). Avoids touching unrelated bits of the textarea.
+                if (caret >= matchStart && caret <= matchEnd) {
+                    // Remove '-<digits>' (keep the trailing dash for the next step).
+                    if (!deleteRange(matchStart, matchStart + 1 + loneDigit[1].length)) return;
+                    continue;
+                }
+            }
+            // Pattern 4: double dash adjacent to caret.
+            if (v.slice(Math.max(0, caret - 1), caret + 1) === '--') {
+                if (!deleteRange(caret - 1, caret)) return;
+                continue;
+            }
+            if (caret < v.length - 1 && v[caret] === '-' && v[caret + 1] === '-') {
+                if (!deleteRange(caret, caret + 1)) return;
+                continue;
+            }
+            return;  // nothing more to collapse
+        }
+    }
+    /** Selects [start, end) and deletes via execCommand. Returns true on success. */
+    function deleteRange(start, end) {
+        if (start < 0 || end <= start) return false;
+        textareaEl.setSelectionRange(start, end);
+        const ok = document.execCommand && document.execCommand('delete', false);
+        if (!ok) {
+            const v = textareaEl.value;
+            textareaEl.value = v.slice(0, start) + v.slice(end);
+            textareaEl.setSelectionRange(start, start);
+        }
+        return true;
+    }
+    /** Inserts text at the current caret via execCommand (undo-tracked).
+     *  Falls back to direct .value mutation if the browser refuses. */
+    function insertViaPipeline(text) {
+        const ok = document.execCommand && document.execCommand('insertText', false, text);
+        if (!ok) {
+            const start = textareaEl.selectionStart;
+            const end = textareaEl.selectionEnd;
+            const v = textareaEl.value;
+            textareaEl.value = v.slice(0, start) + text + v.slice(end);
+            const newPos = start + text.length;
+            textareaEl.setSelectionRange(newPos, newPos);
+        }
+        return true;
+    }
+    textareaEl.addEventListener("input", (e) => {
+        maybeNormaliseAfterInput(e);
+        renderCurves();
+    });
+    textareaEl.addEventListener("paste", (e) => {
+        // Intercept paste so we can canonicalise to the dashed step form.
+        // Insert via execCommand so the paste remains in the native undo stack.
+        const cd = e.clipboardData || window.clipboardData;
+        if (!cd) { setTimeout(renderCurves, 0); return; }
+        const raw = cd.getData('text');
+        if (!raw) { setTimeout(renderCurves, 0); return; }
+        e.preventDefault();
+        const canonical = dashifyNotation(raw);
+        const ok = document.execCommand && document.execCommand('insertText', false, canonical);
+        if (!ok) {
+            // Fallback: direct value mutation (loses paste-step undo only)
+            const start = textareaEl.selectionStart;
+            const end = textareaEl.selectionEnd;
+            textareaEl.value = textareaEl.value.slice(0, start) + canonical + textareaEl.value.slice(end);
+            const newPos = start + canonical.length;
+            textareaEl.setSelectionRange(newPos, newPos);
+        }
+        renderCurves();
     });
     containerEl.addEventListener("click", () => {
         if (animationFrameId !== null) {
@@ -3184,7 +3378,7 @@ function init() {
             const targets = anySelected
                 ? appState.series.filter(s => s.selected)
                 : appState.series;
-            const textToCopy = targets.map(s => s.transformedNotation).join("\n");
+            const textToCopy = targets.map(s => dashifyNotation(s.transformedNotation)).join("\n");
             navigator.clipboard.writeText(textToCopy).then(() => {
                 const origText = copyBtnTextEl.textContent;
                 copyBtnTextEl.textContent = "Skopiowano!";
@@ -3221,6 +3415,7 @@ function init() {
             arcs: s.arcs,
             color: s.color,
             notation: s.transformedNotation,
+            strokeWidth: s.strokeWidth || 1.0,
             // When splitting, each file represents one series, so don't dim it.
             selected: splitMode ? false : s.selected
         });
@@ -3558,6 +3753,16 @@ function init() {
             return;
         }
         const key = e.key.toUpperCase();
+        // Ctrl/Cmd+S → Zapisz w Bibliotece. Intercepted *before* the generic
+        // modifier-passthrough below so the browser's native 'Save Page' is
+        // overridden. (Note: input fields short-circuit above — they keep
+        // their own native behaviour, including any nested Ctrl+S quirks.)
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && key === 'S') {
+            e.preventDefault();
+            const saveBtn = document.getElementById('save-to-library-btn');
+            if (saveBtn && !saveBtn.disabled) saveBtn.click();
+            return;
+        }
         // Let the browser keep its default chords (zoom, refresh, find, devtools, etc.).
         if (e.ctrlKey || e.metaKey || e.altKey) {
             return;
@@ -3834,20 +4039,54 @@ function init() {
     /** Saves the current notation to the library under appState.ukladName (or
      *  a fresh timestamp if empty). Returns the actual saved name (which may
      *  have been suffixed -1, -2, … to avoid collision). */
+    /** Saves the current układ to the Biblioteka if it isn't already a
+     *  byte-identical copy of an existing entry. Returns one of:
+     *    { status: 'saved',     name: <finalName> }
+     *    { status: 'duplicate', name: <existingName> }
+     *    null  (nothing to save — empty notation)
+     *  Duplicate detection compares the canonical notation + per-series
+     *  meta (transformation + strokeWidth). The display name is ignored
+     *  for the comparison so that re-saving with a different name still
+     *  rejects when the actual content matches. */
     function saveCurrentLayoutToLibrary() {
         const notation = textareaEl.value.trim();
         if (!notation) return null;
+        // Capture per-series state so transformations and thickness are
+        // restored verbatim on load. Indexed positionally — entry N maps to
+        // the Nth whitespace-separated block in the saved notation.
+        const seriesMeta = appState.series.map(s => ({
+            transformation: s.transformation || 'O',
+            strokeWidth: typeof s.strokeWidth === 'number' ? s.strokeWidth : 1.0
+        }));
+        const layouts = loadSavedLayouts();
+        // Duplicate detection: notation + seriesMeta must both match.
+        const matchesNotation = (a, b) => (a || "").trim() === (b || "").trim();
+        const matchesMeta = (a, b) => {
+            if (!Array.isArray(a) || !Array.isArray(b)) return false;
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if ((a[i].transformation || 'O') !== (b[i].transformation || 'O')) return false;
+                const swA = typeof a[i].strokeWidth === 'number' ? a[i].strokeWidth : 1.0;
+                const swB = typeof b[i].strokeWidth === 'number' ? b[i].strokeWidth : 1.0;
+                if (swA !== swB) return false;
+            }
+            return true;
+        };
+        const existing = layouts.find(l => matchesNotation(l.notation, notation) && matchesMeta(l.seriesMeta, seriesMeta));
+        if (existing) {
+            return { status: 'duplicate', name: existing.name };
+        }
         const baseName = (appState.ukladName || "").trim() || getTimestampString();
         const finalName = generateUniqueLayoutName(baseName);
-        const layouts = loadSavedLayouts();
         layouts.push({
             id: `layout_${Date.now()}`,
             name: finalName,
             notation,
+            seriesMeta,
             timestamp: Date.now()
         });
         saveSavedLayouts(layouts);
-        return finalName;
+        return { status: 'saved', name: finalName };
     }
     /** Formats a timestamp (ms) as 'YYYY-MM-DD HH:MM' for the layout list. */
     function formatLayoutTimestamp(ms) {
@@ -3896,6 +4135,32 @@ function init() {
         appState.ukladName = layouts.length === 1 ? layouts[0].name : "";
         if (typeof updateLayoutNameDisplay === 'function') updateLayoutNameDisplay();
         renderCurves();
+        // Restore per-series state (transformations + stroke width). The
+        // notation order in `joined` mirrors the layouts order, so we
+        // concatenate each layout's seriesMeta in the same order and apply
+        // positionally. Older layouts saved before this change have no
+        // seriesMeta — we leave their series at the defaults (O / 1.0).
+        const mergedMeta = layouts.flatMap(l => Array.isArray(l.seriesMeta) ? l.seriesMeta : []);
+        if (mergedMeta.length > 0) {
+            appState.series.forEach((item, idx) => {
+                const meta = mergedMeta[idx];
+                if (!meta) return;
+                if (typeof meta.strokeWidth === 'number') {
+                    item.strokeWidth = meta.strokeWidth;
+                }
+                const t = meta.transformation;
+                if (t && t !== item.transformation && ['O','I','R','RI'].includes(t)) {
+                    item.transformation = t;
+                    try {
+                        const modules = parseNotation(item.originalNotation);
+                        const transformedModules = applyTransformation(modules, t);
+                        item.transformedNotation = transformedModules.map(m => `${m.size}${m.direction.toUpperCase()}`).join("");
+                        item.arcs = generateArcs(transformedModules);
+                    } catch (err) { /* keep defaults on parse error */ }
+                }
+            });
+            renderCurves();
+        }
         closeLibraryModal();
         startAnimation();
     }
@@ -4314,15 +4579,20 @@ function init() {
     }
     if (saveToLibraryBtn) {
         saveToLibraryBtn.addEventListener("click", () => {
-            const finalName = saveCurrentLayoutToLibrary();
-            if (!finalName) return;
-            // Inline green confirmation flash on the button itself
+            const result = saveCurrentLayoutToLibrary();
+            if (!result) return;
+            // Inline flash on the button itself: green for a fresh save,
+            // orange when the layout is a byte-identical duplicate.
             const original = saveToLibraryBtnText.textContent;
-            saveToLibraryBtnText.textContent = `Zapisano "${finalName}"`;
-            saveToLibraryBtn.classList.add("save-confirmation-flash");
+            const flashClass = result.status === 'saved' ? 'save-confirmation-flash' : 'save-warning-flash';
+            const flashText = result.status === 'saved'
+                ? `Zapisano "${result.name}"`
+                : `Układ "${result.name}" już istnieje`;
+            saveToLibraryBtnText.textContent = flashText;
+            saveToLibraryBtn.classList.add(flashClass);
             setTimeout(() => {
                 saveToLibraryBtnText.textContent = original;
-                saveToLibraryBtn.classList.remove("save-confirmation-flash");
+                saveToLibraryBtn.classList.remove(flashClass);
             }, 1800);
         });
     }
