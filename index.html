@@ -3040,12 +3040,16 @@ function init() {
     }
     // Event Listeners
     /** Normalises the textarea after a user edit so the dashed step form
-     *  stays consistent. Three cases handled:
-     *    1. Just typed L or P that closes a step → append '-' after it.
+     *  stays consistent. Covers four cases:
+     *    1. Just typed L or P that closes a step → append '-' after it (unless
+     *       a '-' is already there). Works mid-content and at end-of-content.
      *    2. Just typed a digit right after an L or P (no dash between) →
-     *       insert '-' before the digit.
-     *    3. Just backspaced a digit, leaving '-' as the new last character →
-     *       also delete that '-' (so the user lands on a clean step boundary).
+     *       insert '-' before the digit. Works mid-content and at end-of-content.
+     *    3. Just backspaced a character leaving a trailing '-' as the last
+     *       char before the caret → delete that orphan dash.
+     *    4. Just deleted a character (forward or backward) and it left a
+     *       malformed step adjacent to the caret — '-[LP]-' (lone letter)
+     *       or '-\d-' (lone digit) or '--' (double dash) — collapse it.
      *  All operations go through document.execCommand() so they're captured
      *  by the native undo stack and treated as part of the same logical edit
      *  as the triggering keystroke. */
@@ -3054,51 +3058,107 @@ function init() {
         const v = textareaEl.value;
         const caret = textareaEl.selectionStart;
         if (e.inputType === 'insertText') {
-            // Cases 1 + 2 — only when caret is at end-of-content or before whitespace.
-            if (caret < v.length && !/\s/.test(v[caret])) return;
             const data = e.data;
+            const next = v[caret];  // char immediately after caret (may be undefined at EOC)
             if (data === 'l' || data === 'L' || data === 'p' || data === 'P') {
-                // Case 1: digit + just-typed L/P → append '-'
-                if (caret >= 2 && /\d/.test(v[caret - 2]) && v[caret] !== '-') {
+                // Case 1: digit + just-typed L/P → append '-' (unless already there).
+                if (caret >= 2 && /\d/.test(v[caret - 2]) && next !== '-') {
                     insertViaPipeline('-');
                 }
             } else if (/^\d$/.test(data || '')) {
-                // Case 2: L/P + just-typed digit (no dash between) → insert '-' before the digit
+                // Case 2: L/P + just-typed digit → insert '-' BEFORE the digit.
                 if (caret >= 2 && /[lLpP]/.test(v[caret - 2]) && v[caret - 1] === data) {
-                    // Move caret one step back so the dash goes between the L/P and the new digit,
-                    // then restore caret position past the digit.
                     textareaEl.setSelectionRange(caret - 1, caret - 1);
                     const ok = insertViaPipeline('-');
                     if (ok) {
-                        // execCommand insertText leaves caret right after the inserted '-',
-                        // i.e. between '-' and the digit. Step over the digit so the user can keep typing.
+                        // After execCommand insertText, caret sits between '-' and the digit.
+                        // Step past the digit so further typing continues forward.
                         textareaEl.setSelectionRange(caret + 1, caret + 1);
                     } else {
-                        textareaEl.setSelectionRange(caret, caret);  // restore on failure
+                        textareaEl.setSelectionRange(caret, caret);
                     }
                 }
             }
-        } else if (e.inputType === 'deleteContentBackward') {
-            // Case 3: just backspaced something, leaving a trailing '-' as the
-            // last char before the caret. Auto-delete that orphan dash so the
-            // user lands on a clean step boundary (no '...-' artefact).
-            // Only collapse when the dash is at end-of-content or before whitespace
-            // (i.e. it's truly orphaned with nothing after it).
-            if (caret > 0 && v[caret - 1] === '-') {
-                if (caret >= v.length || /\s/.test(v[caret])) {
-                    // Select the trailing dash and delete it via the editing
-                    // pipeline. execCommand('delete') with a non-empty selection
-                    // removes the selected text and is captured in the undo stack.
-                    textareaEl.setSelectionRange(caret - 1, caret);
-                    const ok = document.execCommand && document.execCommand('delete', false);
-                    if (!ok) {
-                        // Fallback
-                        textareaEl.value = v.slice(0, caret - 1) + v.slice(caret);
-                        textareaEl.setSelectionRange(caret - 1, caret - 1);
-                    }
-                }
-            }
+        } else if (e.inputType === 'deleteContentBackward'
+                || e.inputType === 'deleteContentForward'
+                || e.inputType === 'deleteContent') {
+            collapseAdjacentDashArtefacts();
         }
+    }
+    /** After a deletion, sweep small neighbourhoods around the caret for
+     *  malformed-step artefacts and delete them via the editing pipeline so
+     *  the textarea returns to a clean dashed-step form. Handles:
+     *    - trailing orphan dash at end-of-content / before whitespace
+     *    - '--' double dash adjacent to caret
+     *    - '-[LP]-' lone letter (digit was deleted, letter orphaned)
+     *    - '-\d-'  lone digit  (letter was deleted, digit orphaned)
+     *  Each individual repair selects the offending range and calls
+     *  execCommand('delete') so the cleanup is part of the same undo step
+     *  as the triggering keystroke. */
+    function collapseAdjacentDashArtefacts() {
+        // Run up to a few times in case multiple artefacts cascade — but cap so
+        // we never spin forever if execCommand fails silently.
+        for (let pass = 0; pass < 3; pass++) {
+            const v = textareaEl.value;
+            const caret = textareaEl.selectionStart;
+            // Scan a small window around the caret.
+            const winStart = Math.max(0, caret - 3);
+            const winEnd = Math.min(v.length, caret + 3);
+
+            // Pattern 1: trailing dash with nothing after (end-of-content or whitespace)
+            if (caret > 0 && v[caret - 1] === '-' && (caret >= v.length || /\s/.test(v[caret]))) {
+                if (!deleteRange(caret - 1, caret)) return;
+                continue;
+            }
+            // Pattern 2: lone L/P inside dashes — digit was deleted, letter stranded.
+            //   '...X-[LP]-Y...' where X is digit/letter/whitespace/start, Y is digit/whitespace/end.
+            //   Collapse by removing the lone letter AND one neighbouring dash.
+            const leftLetter = v.slice(winStart, winEnd).match(/(^|\W|\d)-([lLpP])(?=-|\s|$)/);
+            if (leftLetter) {
+                const idx = winStart + leftLetter.index + leftLetter[1].length;  // points at the '-'
+                // Remove the '-[LP]' pair (2 chars). Caret should land just before the deletion.
+                if (!deleteRange(idx, idx + 2)) return;
+                continue;
+            }
+            // Pattern 3: lone digit inside dashes — letter was deleted, digit stranded.
+            //   '...X-\d+-Y...' where X is letter/whitespace/start, Y is digit/whitespace/end.
+            //   But wait — '\d-' on its own is a valid in-progress step in the middle of typing,
+            //   so we only collapse when the digit is BOTH preceded by '-' AND followed by '-'.
+            const loneDigit = v.slice(winStart, winEnd).match(/-(\d+)-/);
+            if (loneDigit) {
+                const matchStart = winStart + loneDigit.index;  // points at the leading '-'
+                const matchEnd = matchStart + loneDigit[0].length;  // just past the trailing '-'
+                // Only collapse if the caret is inside or adjacent to this match (i.e. the user
+                // just edited here). Avoids touching unrelated bits of the textarea.
+                if (caret >= matchStart && caret <= matchEnd) {
+                    // Remove '-<digits>' (keep the trailing dash for the next step).
+                    if (!deleteRange(matchStart, matchStart + 1 + loneDigit[1].length)) return;
+                    continue;
+                }
+            }
+            // Pattern 4: double dash adjacent to caret.
+            if (v.slice(Math.max(0, caret - 1), caret + 1) === '--') {
+                if (!deleteRange(caret - 1, caret)) return;
+                continue;
+            }
+            if (caret < v.length - 1 && v[caret] === '-' && v[caret + 1] === '-') {
+                if (!deleteRange(caret, caret + 1)) return;
+                continue;
+            }
+            return;  // nothing more to collapse
+        }
+    }
+    /** Selects [start, end) and deletes via execCommand. Returns true on success. */
+    function deleteRange(start, end) {
+        if (start < 0 || end <= start) return false;
+        textareaEl.setSelectionRange(start, end);
+        const ok = document.execCommand && document.execCommand('delete', false);
+        if (!ok) {
+            const v = textareaEl.value;
+            textareaEl.value = v.slice(0, start) + v.slice(end);
+            textareaEl.setSelectionRange(start, start);
+        }
+        return true;
     }
     /** Inserts text at the current caret via execCommand (undo-tracked).
      *  Falls back to direct .value mutation if the browser refuses. */
