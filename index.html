@@ -242,7 +242,7 @@ textarea, .textarea-backdrop {
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
   font-family: monospace;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -1384,7 +1384,7 @@ textarea:focus {
             <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę układu (litery, cyfry, spacje). Trafia do nazwy plików eksportu jako U_<nazwa>_S_….&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
           </div>
         </div>
-        <div id="stats-display" class="stats">Łuki: 0</div>
+        <div id="stats-display" class="stats">Kroki: 0</div>
       </div>
       <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
 
@@ -1513,9 +1513,9 @@ textarea:focus {
           <span id="save-to-library-btn-text">Zapisz w Bibliotece</span>
         </button>
         <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów&#10;klawisz: [ B ]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
           </svg>
           <span>Biblioteka</span>
         </button>
@@ -1728,6 +1728,19 @@ function transliterateToAscii(s) {
     return s.normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[łŁđĐøØæÆœŒß]/g, c => explicit[c] || c);
+}
+
+/** Canonicalises a notation string to the dashed form used in the UI.
+ *  Strips any existing separators (hyphens, runs of whitespace within a line),
+ *  upper-cases the chirality letters, then rejoins each `<digits><L|P>` step
+ *  with '-'. Multi-line input is preserved (each line is one Seria). */
+function dashifyNotation(text) {
+    if (!text) return '';
+    return text.split(/\r?\n/).map(line => {
+        const matches = line.match(/(\d+)([lLpP])/g);
+        if (!matches) return line; // leave non-notation lines alone (mostly empty)
+        return matches.map(m => m.replace(/([lLpP])/, c => c.toUpperCase())).join('-');
+    }).join('\n');
 }
 
 /** Returns a sanitized prefix for export filenames based on the current układ name and series. */
@@ -2493,7 +2506,7 @@ function init() {
     const resetAllThicknessBtn = document.getElementById("reset-all-thickness-btn");
     const selectNoneBtn = document.getElementById("select-none-btn");
     // Initial state with default Seria A loaded in the textarea
-    textareaEl.value = "1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
+    textareaEl.value = dashifyNotation("1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l");
     let animationFrameId = null;
     let animationStartTime = null;
     let animatingPaths = [];
@@ -2715,7 +2728,7 @@ function init() {
             errorEl.textContent = "Wklej lub wpisz notację np: 1p2p3p4p5l6l7l6l5p4p3p2p1l2l3l4l5p6p7p6p5l4l3l2l";
             errorEl.classList.remove("hidden");
             containerEl.innerHTML = "";
-            statsEl.textContent = "Łuki: 0";
+            statsEl.textContent = "Kroki: 0";
             downloadEl.disabled = true;
             renderLegend();
             return;
@@ -2750,7 +2763,7 @@ function init() {
         }
         if (hasError && activeSeries.length === 0) {
             containerEl.innerHTML = "";
-            statsEl.textContent = "Łuki: 0";
+            statsEl.textContent = "Kroki: 0";
             downloadEl.disabled = true;
             renderLegend();
             return;
@@ -2760,7 +2773,7 @@ function init() {
             const svg = generateSVGElement(activeSeries);
             containerEl.innerHTML = "";
             containerEl.appendChild(svg);
-            statsEl.textContent = `Łuki: ${totalArcs}`;
+            statsEl.textContent = `Kroki: ${totalArcs}`;
             const allComplete = activeSeries.every(s => /[lLpP]/.test(s.notation.trim().slice(-1)));
             downloadEl.disabled = !allComplete;
             // Check for margin overflow in Absolute Mode
@@ -2801,7 +2814,7 @@ function init() {
             errorEl.textContent = `Błąd: ${err.message}`;
             errorEl.classList.remove("hidden");
             containerEl.innerHTML = "";
-            statsEl.textContent = "Łuki: 0";
+            statsEl.textContent = "Kroki: 0";
             downloadEl.disabled = true;
         }
         renderLegend();
@@ -2864,7 +2877,7 @@ function init() {
             numSpan.title = `Kliknięcie zaznacza/odznacza serię; kliknięcie w numer kopiuje notację do schowka${seriesKeyHint}`;
             numSpan.addEventListener("click", (e) => {
                 e.stopPropagation();
-                navigator.clipboard.writeText(item.transformedNotation).then(() => {
+                navigator.clipboard.writeText(dashifyNotation(item.transformedNotation)).then(() => {
                     const originalText = numSpan.textContent;
                     numSpan.textContent = "Skopiowano!";
                     numSpan.style.color = "var(--success-color, #16a34a)";
@@ -2881,7 +2894,7 @@ function init() {
             if (item.transformation !== 'O') {
                 parsedSpan.classList.add("transformed");
             }
-            parsedSpan.textContent = item.transformedNotation;
+            parsedSpan.textContent = dashifyNotation(item.transformedNotation);
             info.appendChild(numSpan);
             info.appendChild(parsedSpan);
             row.appendChild(info);
@@ -3026,9 +3039,60 @@ function init() {
         }
     }
     // Event Listeners
-    textareaEl.addEventListener("input", renderCurves);
+    /** Auto-canonicalises the textarea content to the dashed step form
+     *  ('1P-2P-3L'). Runs on every input event; preserves caret position by
+     *  counting how many module 'steps' (a number followed by L|P) sit before
+     *  the previous caret position and re-anchoring after re-formatting. */
+    function canonicaliseTextareaInput() {
+        const before = textareaEl.value;
+        const caret = textareaEl.selectionStart;
+        const after = dashifyNotation(before);
+        if (after === before) return;
+        // Count how many full module steps are at-or-before the original caret
+        // in the pre-canonicalised text. We anchor the new caret right after
+        // that same step in the new (dashed) text.
+        const head = before.slice(0, caret);
+        const stepCountBeforeCaret = (head.match(/\d+[lLpP]/g) || []).length;
+        const partialAfterLastStep = head.replace(/.*\d+[lLpP]/, ''); // trailing fragment after the last full step (e.g. '1', '1p2', or '')
+        textareaEl.value = after;
+        // Walk the new string to find the position right after stepCountBeforeCaret-th step.
+        let newPos = 0;
+        if (stepCountBeforeCaret > 0) {
+            const re = /\d+[LP]/g;
+            let m, last;
+            for (let i = 0; i < stepCountBeforeCaret; i++) {
+                m = re.exec(after);
+                if (!m) break;
+                last = m;
+            }
+            if (last) newPos = last.index + last[0].length;
+        }
+        // Append any partial-step fragment (e.g. user just typed '1' but no L/P yet).
+        // It's already in the canonicalised string IF it survived dashify; partial
+        // standalone digits without an L/P don't survive dashify so we re-add them.
+        if (partialAfterLastStep && !/^\d+[lLpP]/.test(partialAfterLastStep)) {
+            // Only add if it's not already there (e.g. user appended at end of last line)
+            const insertAt = newPos;
+            const tail = after.slice(insertAt);
+            // Simplest: insert the partial fragment at newPos
+            if (!tail.startsWith(partialAfterLastStep)) {
+                textareaEl.value = after.slice(0, insertAt) + partialAfterLastStep + after.slice(insertAt);
+                newPos = insertAt + partialAfterLastStep.length;
+            } else {
+                newPos = insertAt + partialAfterLastStep.length;
+            }
+        }
+        textareaEl.setSelectionRange(newPos, newPos);
+    }
+    textareaEl.addEventListener("input", () => {
+        canonicaliseTextareaInput();
+        renderCurves();
+    });
     textareaEl.addEventListener("paste", () => {
-        setTimeout(renderCurves, 0);
+        setTimeout(() => {
+            canonicaliseTextareaInput();
+            renderCurves();
+        }, 0);
     });
     containerEl.addEventListener("click", () => {
         if (animationFrameId !== null) {
@@ -3187,7 +3251,7 @@ function init() {
             const targets = anySelected
                 ? appState.series.filter(s => s.selected)
                 : appState.series;
-            const textToCopy = targets.map(s => s.transformedNotation).join("\n");
+            const textToCopy = targets.map(s => dashifyNotation(s.transformedNotation)).join("\n");
             navigator.clipboard.writeText(textToCopy).then(() => {
                 const origText = copyBtnTextEl.textContent;
                 copyBtnTextEl.textContent = "Skopiowano!";
