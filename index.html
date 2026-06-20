@@ -3039,42 +3039,83 @@ function init() {
         }
     }
     // Event Listeners
-    /** Auto-inserts a '-' after the user types an L or P that closes a step,
-     *  via document.execCommand('insertText') so the operation goes through the
-     *  browser's editing pipeline and is captured in the native undo stack.
-     *  Triggered only when the most recent character at the caret is an L or P
-     *  immediately preceded by digits — never on paste, never on programmatic
-     *  changes. Backspacing the dash deletes it via the normal undo flow. */
-    function maybeAutoInsertDash(e) {
-        if (!e || e.inputType !== 'insertText') return;
-        if (e.data !== 'l' && e.data !== 'L' && e.data !== 'p' && e.data !== 'P') return;
+    /** Normalises the textarea after a user edit so the dashed step form
+     *  stays consistent. Three cases handled:
+     *    1. Just typed L or P that closes a step → append '-' after it.
+     *    2. Just typed a digit right after an L or P (no dash between) →
+     *       insert '-' before the digit.
+     *    3. Just backspaced a digit, leaving '-' as the new last character →
+     *       also delete that '-' (so the user lands on a clean step boundary).
+     *  All operations go through document.execCommand() so they're captured
+     *  by the native undo stack and treated as part of the same logical edit
+     *  as the triggering keystroke. */
+    function maybeNormaliseAfterInput(e) {
+        if (!e) return;
+        const v = textareaEl.value;
         const caret = textareaEl.selectionStart;
-        if (caret === 0) return;
-        // Don't insert if the next char is already '-' or end-of-input is followed by an L/P (avoids '1P--' on duplicate triggers).
-        const next = textareaEl.value[caret];
-        if (next === '-') return;
-        // Confirm the character left of the caret is the just-typed L/P; the one
-        // before that should be a digit (so we know a step just completed).
-        const prev1 = textareaEl.value[caret - 1];
-        const prev2 = textareaEl.value[caret - 2];
-        if (!/[lLpP]/.test(prev1)) return;
-        if (!/\d/.test(prev2)) return;
-        // Only auto-dash when the caret is at end-of-content or before whitespace.
-        // Inserting mid-word would corrupt the user's editing intent.
-        if (caret < textareaEl.value.length && !/\s/.test(textareaEl.value[caret])) return;
-        // execCommand goes through the editing pipeline and is undo-tracked.
-        const ok = document.execCommand && document.execCommand('insertText', false, '-');
-        if (!ok) {
-            // Fallback for browsers that don't honour execCommand on textareas.
-            // Loses undo for this single insertion only.
-            const before = textareaEl.value.slice(0, caret);
-            const after = textareaEl.value.slice(caret);
-            textareaEl.value = before + '-' + after;
-            textareaEl.setSelectionRange(caret + 1, caret + 1);
+        if (e.inputType === 'insertText') {
+            // Cases 1 + 2 — only when caret is at end-of-content or before whitespace.
+            if (caret < v.length && !/\s/.test(v[caret])) return;
+            const data = e.data;
+            if (data === 'l' || data === 'L' || data === 'p' || data === 'P') {
+                // Case 1: digit + just-typed L/P → append '-'
+                if (caret >= 2 && /\d/.test(v[caret - 2]) && v[caret] !== '-') {
+                    insertViaPipeline('-');
+                }
+            } else if (/^\d$/.test(data || '')) {
+                // Case 2: L/P + just-typed digit (no dash between) → insert '-' before the digit
+                if (caret >= 2 && /[lLpP]/.test(v[caret - 2]) && v[caret - 1] === data) {
+                    // Move caret one step back so the dash goes between the L/P and the new digit,
+                    // then restore caret position past the digit.
+                    textareaEl.setSelectionRange(caret - 1, caret - 1);
+                    const ok = insertViaPipeline('-');
+                    if (ok) {
+                        // execCommand insertText leaves caret right after the inserted '-',
+                        // i.e. between '-' and the digit. Step over the digit so the user can keep typing.
+                        textareaEl.setSelectionRange(caret + 1, caret + 1);
+                    } else {
+                        textareaEl.setSelectionRange(caret, caret);  // restore on failure
+                    }
+                }
+            }
+        } else if (e.inputType === 'deleteContentBackward') {
+            // Case 3: just backspaced something, leaving a trailing '-' as the
+            // last char before the caret. Auto-delete that orphan dash so the
+            // user lands on a clean step boundary (no '...-' artefact).
+            // Only collapse when the dash is at end-of-content or before whitespace
+            // (i.e. it's truly orphaned with nothing after it).
+            if (caret > 0 && v[caret - 1] === '-') {
+                if (caret >= v.length || /\s/.test(v[caret])) {
+                    // Select the trailing dash and delete it via the editing
+                    // pipeline. execCommand('delete') with a non-empty selection
+                    // removes the selected text and is captured in the undo stack.
+                    textareaEl.setSelectionRange(caret - 1, caret);
+                    const ok = document.execCommand && document.execCommand('delete', false);
+                    if (!ok) {
+                        // Fallback
+                        textareaEl.value = v.slice(0, caret - 1) + v.slice(caret);
+                        textareaEl.setSelectionRange(caret - 1, caret - 1);
+                    }
+                }
+            }
         }
     }
+    /** Inserts text at the current caret via execCommand (undo-tracked).
+     *  Falls back to direct .value mutation if the browser refuses. */
+    function insertViaPipeline(text) {
+        const ok = document.execCommand && document.execCommand('insertText', false, text);
+        if (!ok) {
+            const start = textareaEl.selectionStart;
+            const end = textareaEl.selectionEnd;
+            const v = textareaEl.value;
+            textareaEl.value = v.slice(0, start) + text + v.slice(end);
+            const newPos = start + text.length;
+            textareaEl.setSelectionRange(newPos, newPos);
+        }
+        return true;
+    }
     textareaEl.addEventListener("input", (e) => {
-        maybeAutoInsertDash(e);
+        maybeNormaliseAfterInput(e);
         renderCurves();
     });
     textareaEl.addEventListener("paste", (e) => {
