@@ -202,6 +202,12 @@ label {
   flex: none;
 }
 
+#anim-mode-btn {
+  width: 90px;
+  justify-content: center;
+  flex: none;
+}
+
 .btn.btn-actions-square {
   width: 34px;
   height: 34px;
@@ -1239,11 +1245,9 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.download-options-row {
-  display: flex;
-  margin-top: 0.4rem;
-  padding-left: 0.2rem;
-}
+/* Optional spacing modifiers used to give a row a bit of breathing room above. */
+.actions-row-spaced-top { margin-top: 0.4rem; }
+.btn-spaced-top { margin-top: 1.2rem; }
 
 /* Centering layout for board expansion */
 .board-container {
@@ -1330,18 +1334,18 @@ textarea:focus {
           <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie)&#10;klawisz: [ 0 ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </button>
+          <button id="anim-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb animacji podglądu między Smooth (gładkie odsłanianie) a Step (skokowe, łuk po łuku — odzwierciedla klatki użyte przy eksporcie 'do animacji')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span id="anim-mode-btn-text">Smooth</span>
+          </button>
           <button id="color-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb kolorów (kolor / mono)&#10;klawisz: [ K ] / [ M ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="2" x2="12" y2="22"></line>
             </svg>
             <span>Kolor</span>
-          </button>
-          <button id="anim-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb animacji podglądu między Smooth (gładkie odsłanianie) a Step (skokowe, łuk po łuku — odzwierciedla klatki użyte przy eksporcie 'do animacji')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-            <span id="anim-mode-btn-text">Smooth</span>
           </button>
           <button id="reset-all-thickness-btn" class="btn btn-secondary btn-small btn-actions-square" title="Resetuj grubość wszystkich serii (do 1.0)&#10;klawisze: [ - ] + [ + ] razem (gdy żadna seria nie jest zaznaczona)" style="margin-left: auto;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
@@ -1356,7 +1360,7 @@ textarea:focus {
       <!-- Kopiuj wszystko: between the Seria legend / action controls above and
            the Tryb Relatywny / Układ block below. Full-width, same height as
            the other primary action buttons. -->
-      <div class="actions-row">
+      <div class="actions-row actions-row-spaced-top">
         <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka&#10;klawisz: [ C ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -1366,7 +1370,7 @@ textarea:focus {
         </button>
       </div>
 
-      <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle" title="Przełącz między Trybem Relatywnym (dopasowanie do podglądu) a Absolutnym (fizyczne wymiary arkusza)&#10;klawisz: [ A ]">Tryb Relatywny</button>
+      <button id="mode-toggle-btn" class="btn btn-secondary btn-view-mode-toggle btn-spaced-top" title="Przełącz między Trybem Relatywnym (dopasowanie do podglądu) a Absolutnym (fizyczne wymiary arkusza)&#10;klawisz: [ A ]">Tryb Relatywny</button>
 
       <!-- Układ naming field + stats on one line -->
       <div class="layout-name-row">
@@ -1491,8 +1495,6 @@ textarea:focus {
           </svg>
           <span id="download-btn-text">Pobierz wszystko</span>
         </button>
-      </div>
-      <div class="download-options-row">
         <label class="checkbox-container download-split-toggle" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <input type="checkbox" id="download-split" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <span>Osobno</span>
