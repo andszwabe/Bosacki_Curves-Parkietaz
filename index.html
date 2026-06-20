@@ -242,7 +242,7 @@ textarea, .textarea-backdrop {
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
   font-family: monospace;
-  font-size: 0.78rem;
+  font-size: 0.83rem;
   line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -3039,60 +3039,63 @@ function init() {
         }
     }
     // Event Listeners
-    /** Auto-canonicalises the textarea content to the dashed step form
-     *  ('1P-2P-3L'). Runs on every input event; preserves caret position by
-     *  counting how many module 'steps' (a number followed by L|P) sit before
-     *  the previous caret position and re-anchoring after re-formatting. */
-    function canonicaliseTextareaInput() {
-        const before = textareaEl.value;
+    /** Auto-inserts a '-' after the user types an L or P that closes a step,
+     *  via document.execCommand('insertText') so the operation goes through the
+     *  browser's editing pipeline and is captured in the native undo stack.
+     *  Triggered only when the most recent character at the caret is an L or P
+     *  immediately preceded by digits — never on paste, never on programmatic
+     *  changes. Backspacing the dash deletes it via the normal undo flow. */
+    function maybeAutoInsertDash(e) {
+        if (!e || e.inputType !== 'insertText') return;
+        if (e.data !== 'l' && e.data !== 'L' && e.data !== 'p' && e.data !== 'P') return;
         const caret = textareaEl.selectionStart;
-        const after = dashifyNotation(before);
-        if (after === before) return;
-        // Count how many full module steps are at-or-before the original caret
-        // in the pre-canonicalised text. We anchor the new caret right after
-        // that same step in the new (dashed) text.
-        const head = before.slice(0, caret);
-        const stepCountBeforeCaret = (head.match(/\d+[lLpP]/g) || []).length;
-        const partialAfterLastStep = head.replace(/.*\d+[lLpP]/, ''); // trailing fragment after the last full step (e.g. '1', '1p2', or '')
-        textareaEl.value = after;
-        // Walk the new string to find the position right after stepCountBeforeCaret-th step.
-        let newPos = 0;
-        if (stepCountBeforeCaret > 0) {
-            const re = /\d+[LP]/g;
-            let m, last;
-            for (let i = 0; i < stepCountBeforeCaret; i++) {
-                m = re.exec(after);
-                if (!m) break;
-                last = m;
-            }
-            if (last) newPos = last.index + last[0].length;
+        if (caret === 0) return;
+        // Don't insert if the next char is already '-' or end-of-input is followed by an L/P (avoids '1P--' on duplicate triggers).
+        const next = textareaEl.value[caret];
+        if (next === '-') return;
+        // Confirm the character left of the caret is the just-typed L/P; the one
+        // before that should be a digit (so we know a step just completed).
+        const prev1 = textareaEl.value[caret - 1];
+        const prev2 = textareaEl.value[caret - 2];
+        if (!/[lLpP]/.test(prev1)) return;
+        if (!/\d/.test(prev2)) return;
+        // Only auto-dash when the caret is at end-of-content or before whitespace.
+        // Inserting mid-word would corrupt the user's editing intent.
+        if (caret < textareaEl.value.length && !/\s/.test(textareaEl.value[caret])) return;
+        // execCommand goes through the editing pipeline and is undo-tracked.
+        const ok = document.execCommand && document.execCommand('insertText', false, '-');
+        if (!ok) {
+            // Fallback for browsers that don't honour execCommand on textareas.
+            // Loses undo for this single insertion only.
+            const before = textareaEl.value.slice(0, caret);
+            const after = textareaEl.value.slice(caret);
+            textareaEl.value = before + '-' + after;
+            textareaEl.setSelectionRange(caret + 1, caret + 1);
         }
-        // Append any partial-step fragment (e.g. user just typed '1' but no L/P yet).
-        // It's already in the canonicalised string IF it survived dashify; partial
-        // standalone digits without an L/P don't survive dashify so we re-add them.
-        if (partialAfterLastStep && !/^\d+[lLpP]/.test(partialAfterLastStep)) {
-            // Only add if it's not already there (e.g. user appended at end of last line)
-            const insertAt = newPos;
-            const tail = after.slice(insertAt);
-            // Simplest: insert the partial fragment at newPos
-            if (!tail.startsWith(partialAfterLastStep)) {
-                textareaEl.value = after.slice(0, insertAt) + partialAfterLastStep + after.slice(insertAt);
-                newPos = insertAt + partialAfterLastStep.length;
-            } else {
-                newPos = insertAt + partialAfterLastStep.length;
-            }
-        }
-        textareaEl.setSelectionRange(newPos, newPos);
     }
-    textareaEl.addEventListener("input", () => {
-        canonicaliseTextareaInput();
+    textareaEl.addEventListener("input", (e) => {
+        maybeAutoInsertDash(e);
         renderCurves();
     });
-    textareaEl.addEventListener("paste", () => {
-        setTimeout(() => {
-            canonicaliseTextareaInput();
-            renderCurves();
-        }, 0);
+    textareaEl.addEventListener("paste", (e) => {
+        // Intercept paste so we can canonicalise to the dashed step form.
+        // Insert via execCommand so the paste remains in the native undo stack.
+        const cd = e.clipboardData || window.clipboardData;
+        if (!cd) { setTimeout(renderCurves, 0); return; }
+        const raw = cd.getData('text');
+        if (!raw) { setTimeout(renderCurves, 0); return; }
+        e.preventDefault();
+        const canonical = dashifyNotation(raw);
+        const ok = document.execCommand && document.execCommand('insertText', false, canonical);
+        if (!ok) {
+            // Fallback: direct value mutation (loses paste-step undo only)
+            const start = textareaEl.selectionStart;
+            const end = textareaEl.selectionEnd;
+            textareaEl.value = textareaEl.value.slice(0, start) + canonical + textareaEl.value.slice(end);
+            const newPos = start + canonical.length;
+            textareaEl.setSelectionRange(newPos, newPos);
+        }
+        renderCurves();
     });
     containerEl.addEventListener("click", () => {
         if (animationFrameId !== null) {
