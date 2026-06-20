@@ -1239,6 +1239,12 @@ textarea:focus {
   white-space: nowrap;
 }
 
+.download-options-row {
+  display: flex;
+  margin-top: 0.4rem;
+  padding-left: 0.2rem;
+}
+
 /* Centering layout for board expansion */
 .board-container {
   width: 100%;
@@ -1485,6 +1491,8 @@ textarea:focus {
           </svg>
           <span id="download-btn-text">Pobierz wszystko</span>
         </button>
+      </div>
+      <div class="download-options-row">
         <label class="checkbox-container download-split-toggle" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <input type="checkbox" id="download-split" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <span>Osobno</span>
