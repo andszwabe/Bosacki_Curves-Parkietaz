@@ -1362,7 +1362,7 @@ textarea:focus {
            the Tryb Relatywny / Układ block below. Full-width, same height as
            the other primary action buttons. -->
       <div class="actions-row actions-row-spaced-top">
-        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj notację zaznaczonych serii do schowka&#10;klawisz: [ C ]">
+        <button id="copy-btn" class="btn btn-secondary" disabled title="Kopiuj zaznaczone Serie — po transformacjach (Inwersja, Rak, etc.) — jako Notację&#10;klawisz: [ C ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1513,7 +1513,10 @@ textarea:focus {
           <span id="save-to-library-btn-text">Zapisz w Bibliotece</span>
         </button>
         <button id="library-btn" class="btn btn-secondary" title="Otwórz Bibliotekę zapisanych układów&#10;klawisz: [ B ]">
-          <span class="swirl-icon">𖦹</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
           <span>Biblioteka</span>
         </button>
       </div>
@@ -2385,6 +2388,7 @@ function exportAnimationFrames(targets, splitMode) {
         arcs: s.arcs,
         color: s.color,
         notation: s.transformedNotation,
+        strokeWidth: s.strokeWidth || 1.0,
         selected: dimWhenNotSelected ? s.selected : false
     });
     // For each frame at step N, replace each series' arcs with arcs.slice(0, N).
@@ -2821,12 +2825,11 @@ function init() {
                 : "Pokaż wszystkie serie") + "\nklawisz: [ H ]";
         }
         if (selectNoneBtn) {
-            const anySelected = appState.series.some(s => s.selected);
-            if (!anySelected && appState.series.length > 0) {
-                selectNoneBtn.classList.add("active");
-            } else {
-                selectNoneBtn.classList.remove("active");
-            }
+            // Keep selectNoneBtn visually neutral regardless of selection state.
+            // Removing the 'active' toggle here intentionally: the button is a
+            // stateless action ("reset selection to none") and shouldn't change
+            // colour to indicate state.
+            selectNoneBtn.classList.remove("active");
         }
         legendContainerEl.innerHTML = "";
         appState.series.forEach((item, idx) => {
@@ -3221,6 +3224,7 @@ function init() {
             arcs: s.arcs,
             color: s.color,
             notation: s.transformedNotation,
+            strokeWidth: s.strokeWidth || 1.0,
             // When splitting, each file represents one series, so don't dim it.
             selected: splitMode ? false : s.selected
         });
@@ -3839,11 +3843,19 @@ function init() {
         if (!notation) return null;
         const baseName = (appState.ukladName || "").trim() || getTimestampString();
         const finalName = generateUniqueLayoutName(baseName);
+        // Capture per-series state so transformations and thickness are
+        // restored verbatim on load. Indexed positionally — entry N maps to
+        // the Nth whitespace-separated block in the saved notation.
+        const seriesMeta = appState.series.map(s => ({
+            transformation: s.transformation || 'O',
+            strokeWidth: typeof s.strokeWidth === 'number' ? s.strokeWidth : 1.0
+        }));
         const layouts = loadSavedLayouts();
         layouts.push({
             id: `layout_${Date.now()}`,
             name: finalName,
             notation,
+            seriesMeta,
             timestamp: Date.now()
         });
         saveSavedLayouts(layouts);
@@ -3896,6 +3908,32 @@ function init() {
         appState.ukladName = layouts.length === 1 ? layouts[0].name : "";
         if (typeof updateLayoutNameDisplay === 'function') updateLayoutNameDisplay();
         renderCurves();
+        // Restore per-series state (transformations + stroke width). The
+        // notation order in `joined` mirrors the layouts order, so we
+        // concatenate each layout's seriesMeta in the same order and apply
+        // positionally. Older layouts saved before this change have no
+        // seriesMeta — we leave their series at the defaults (O / 1.0).
+        const mergedMeta = layouts.flatMap(l => Array.isArray(l.seriesMeta) ? l.seriesMeta : []);
+        if (mergedMeta.length > 0) {
+            appState.series.forEach((item, idx) => {
+                const meta = mergedMeta[idx];
+                if (!meta) return;
+                if (typeof meta.strokeWidth === 'number') {
+                    item.strokeWidth = meta.strokeWidth;
+                }
+                const t = meta.transformation;
+                if (t && t !== item.transformation && ['O','I','R','RI'].includes(t)) {
+                    item.transformation = t;
+                    try {
+                        const modules = parseNotation(item.originalNotation);
+                        const transformedModules = applyTransformation(modules, t);
+                        item.transformedNotation = transformedModules.map(m => `${m.size}${m.direction.toUpperCase()}`).join("");
+                        item.arcs = generateArcs(transformedModules);
+                    } catch (err) { /* keep defaults on parse error */ }
+                }
+            });
+            renderCurves();
+        }
         closeLibraryModal();
         startAnimation();
     }
