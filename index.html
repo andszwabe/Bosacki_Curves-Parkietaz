@@ -1384,7 +1384,7 @@ textarea:focus {
             <input type="text" id="layout-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę układu (litery, cyfry, spacje). Trafia do nazwy plików eksportu jako U_<nazwa>_S_….&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
           </div>
         </div>
-        <div id="stats-display" class="stats">Kroki: 0</div>
+        <div id="stats-display" class="stats" title="Liczba kroków (łuków) w bieżącym układzie. Gdy żadna seria nie jest zaznaczona — łączna suma wszystkich widocznych serii. Gdy któraś seria jest zaznaczona — suma kroków tylko z zaznaczonych serii.">Kroki: 0</div>
       </div>
       <span id="layout-name-mirror" class="layout-name-mirror" aria-hidden="true"></span>
 
@@ -2773,7 +2773,14 @@ function init() {
             const svg = generateSVGElement(activeSeries);
             containerEl.innerHTML = "";
             containerEl.appendChild(svg);
-            statsEl.textContent = `Kroki: ${totalArcs}`;
+            // Selection-aware step count: when any visible series is selected,
+            // count steps from those only; otherwise count steps from every
+            // visible series. Mirrors the Kopiuj / Pobierz selection logic.
+            const anySelectedVisible = activeSeries.some(s => s.selected);
+            const stepsCounted = anySelectedVisible
+                ? activeSeries.filter(s => s.selected).reduce((sum, s) => sum + s.arcs.length, 0)
+                : totalArcs;
+            statsEl.textContent = `Kroki: ${stepsCounted}`;
             const allComplete = activeSeries.every(s => /[lLpP]/.test(s.notation.trim().slice(-1)));
             downloadEl.disabled = !allComplete;
             // Check for margin overflow in Absolute Mode
