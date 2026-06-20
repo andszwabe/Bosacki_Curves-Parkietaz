@@ -208,6 +208,16 @@ label {
   flex: none;
 }
 
+/* Keep the icons inside the fixed-width view-toggle buttons at their declared
+   size regardless of label width (Kolor vs. Mono, Smooth vs. Step). Without
+   flex-shrink:0, the SVGs collapse when the label takes more horizontal space. */
+#color-mode-btn svg,
+#anim-mode-btn svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
 .btn.btn-actions-square {
   width: 34px;
   height: 34px;
@@ -1504,7 +1514,7 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …">
+        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …&#10;klawisz: [ Ctrl ] + [ S ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
@@ -3737,6 +3747,16 @@ function init() {
             return;
         }
         const key = e.key.toUpperCase();
+        // Ctrl/Cmd+S → Zapisz w Bibliotece. Intercepted *before* the generic
+        // modifier-passthrough below so the browser's native 'Save Page' is
+        // overridden. (Note: input fields short-circuit above — they keep
+        // their own native behaviour, including any nested Ctrl+S quirks.)
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && key === 'S') {
+            e.preventDefault();
+            const saveBtn = document.getElementById('save-to-library-btn');
+            if (saveBtn && !saveBtn.disabled) saveBtn.click();
+            return;
+        }
         // Let the browser keep its default chords (zoom, refresh, find, devtools, etc.).
         if (e.ctrlKey || e.metaKey || e.altKey) {
             return;
