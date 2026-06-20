@@ -1334,7 +1334,7 @@ textarea:focus {
           <button id="select-none-btn" class="btn btn-secondary btn-small btn-actions-square" title="Domyślny widok (odznacz wszystkie serie)&#10;klawisz: [ 0 ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </button>
-          <button id="anim-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb animacji podglądu między Smooth (gładkie odsłanianie) a Step (skokowe, łuk po łuku — odzwierciedla klatki użyte przy eksporcie 'do animacji')">
+          <button id="anim-mode-btn" class="btn btn-secondary btn-small" title="Przełącz tryb animacji podglądu między Smooth (gładkie odsłanianie) a Step (skokowe, łuk po łuku — odzwierciedla klatki użyte przy eksporcie 'do animacji')&#10;klawisz: [ S ]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
             </svg>
@@ -3616,6 +3616,12 @@ function init() {
         else if (key === 'A') {
             e.preventDefault();
             toggleViewMode();
+        }
+        else if (key === 'S') {
+            // Mirror the Smooth/Step button click.
+            e.preventDefault();
+            const animBtnEl = document.getElementById("anim-mode-btn");
+            if (animBtnEl) animBtnEl.click();
         }
         else if (key === 'H') {
             // Mirror the action-row 'visibility-all' button: mass toggle.
