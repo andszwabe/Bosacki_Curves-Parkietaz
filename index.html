@@ -1880,7 +1880,9 @@ function generateCleanSVGString(seriesList) {
                 continue;
             const isDimmed = anySelected && !s.selected;
             const opacityAttr = isDimmed ? ' opacity="0.03"' : '';
-            const baseStrokeWidth = 1.5 * exportScale;
+            // Match the live-preview formula (0.003 × max viewbox dimension)
+            // so the exported curve has the same visual stroke ratio as on screen.
+            const baseStrokeWidth = Math.max(viewBoxWidth, viewBoxHeight) * 0.003;
             pathElements += `  <path \n    d="${renderSVGPath(s.arcs)}" \n    fill="none" \n    stroke="${colorMode === 'color' ? s.color : "#000000"}" \n    stroke-width="${(baseStrokeWidth * (s.strokeWidth || 1.0)).toFixed(4)}" \n    stroke-linecap="round" \n    stroke-linejoin="round"${opacityAttr}\n  />\n`;
         }
         const bgRect = '';
@@ -1914,13 +1916,14 @@ ${bgRect}${pathElements}</svg>`;
         }
         tx += (shiftX / 100) * (W / 2);
         ty -= (shiftY / 100) * (H / 2);
-        const strokeWidth = (Math.max(W, H) * 0.0015).toFixed(4);
+        const baseStrokeWidth = Math.max(W, H) * 0.0015;
         let pathElements = "";
         for (const s of seriesList) {
             if (s.arcs.length === 0)
                 continue;
             const isDimmed = anySelected && !s.selected;
             const opacityAttr = isDimmed ? ' opacity="0.03"' : '';
+            const strokeWidth = (baseStrokeWidth * (s.strokeWidth || 1.0)).toFixed(4);
             pathElements += `    <path 
       d="${renderSVGPath(s.arcs)}" 
       fill="none" 
