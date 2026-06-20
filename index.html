@@ -1467,6 +1467,12 @@ textarea:focus {
               <span>Białe tło</span>
             </label>
           </div>
+          <div class="setting-field checkbox-field">
+            <label class="checkbox-container" title="Gdy zaznaczone: pobiera ZIP z klatkami animacji — łuk po łuku. Każda klatka N zawiera pierwsze N łuków. Łączy się z Osobno (każda Seria w osobnym podfolderze).">
+              <input type="checkbox" id="download-animation" title="Gdy zaznaczone: pobiera ZIP z klatkami animacji — łuk po łuku. Każda klatka N zawiera pierwsze N łuków. Łączy się z Osobno (każda Seria w osobnym podfolderze).">
+              <span>Do animacji</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -1482,10 +1488,6 @@ textarea:focus {
         <label class="checkbox-container download-split-toggle" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <input type="checkbox" id="download-split" title="Gdy zaznaczone: każda seria jako osobny plik. Gdy odznaczone: jeden plik z wszystkimi seriami.">
           <span>Osobno</span>
-        </label>
-        <label class="checkbox-container download-split-toggle" title="Gdy zaznaczone: pobiera ZIP z klatkami animacji — łuk po łuku. Każda klatka N zawiera pierwsze N łuków. Łączy się z Osobno (każda Seria w osobnym podfolderze).">
-          <input type="checkbox" id="download-animation" title="Gdy zaznaczone: pobiera ZIP z klatkami animacji — łuk po łuku. Każda klatka N zawiera pierwsze N łuków. Łączy się z Osobno (każda Seria w osobnym podfolderze).">
-          <span>Do animacji</span>
         </label>
       </div>
 
@@ -3278,6 +3280,11 @@ function init() {
             exportCardEl === null || exportCardEl === void 0 ? void 0 : exportCardEl.classList.add("hidden");
             containerEl.classList.remove("absolute-mode");
             containerEl.style.aspectRatio = "1 / 1";
+            // 'Do animacji' lives inside the export-card (Tryb Absolutny only).
+            // Reset it on the way out so the next Pobierz wszystko in Relatywny
+            // doesn't unexpectedly trigger a frame-by-frame ZIP export.
+            const animEl = document.getElementById("download-animation");
+            if (animEl) animEl.checked = false;
         }
         else {
             if (modeToggleBtn) {
