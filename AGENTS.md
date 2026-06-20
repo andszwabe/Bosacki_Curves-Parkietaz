@@ -67,6 +67,7 @@ git checkout dev
 - When making UI changes, the project note (`../Z-…parkietaż.md`) holds the current todo list and Bosacki's pending requests — check it before suggesting new work.
 - Obsidian wiki-links (`[[NoteName]]`) in any file resolve to `<NoteName>.md` in master folder, app folder, or `../input/` (in that order).
 - Do not reintroduce GitHub Actions for deployment — billing was locked on the free account; "Deploy from a branch" is the working setup.
+- **If a push to `main` doesn't go live within ~5 min**, GitHub Pages' auto-trigger has stalled (happens occasionally on free-tier repos — the webhook just gets dropped). Standard remedy: push an empty commit on `main` — `git commit --allow-empty -m "chore: kick GitHub Pages rebuild"` then `git push`. Pages picks up the push and serves whatever is at HEAD, so this deploys the previously-stuck commits without needing to re-merge.
 
 ## Update protocol
 
