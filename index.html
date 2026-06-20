@@ -562,11 +562,62 @@ textarea:focus {
   justify-content: space-between;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .modal-header h2 {
   font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* Biblioteka name field — same click-to-edit + font-fit pattern as the
+   Układ heading, but smaller (matches modal header h2 size) and constrained
+   to the row width so it doesn't run into the action buttons. Uses the
+   shared .layout-name-display / .layout-name-edit-wrapper / .layout-name-input
+   classes for typography and toggling; only sizing/fit overrides live here. */
+.library-name-container {
+  cursor: text;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  margin-right: 0.6rem;
+  font-size: 1.4rem;
+  overflow: hidden;
+}
+
+.library-name-mirror {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  line-height: 1.2;
+  left: -9999px;
+  top: -9999px;
+}
+
+.library-name-container .layout-name-display,
+.library-name-container .layout-name-edit-wrapper {
+  font-weight: 600;  /* h2-equivalent weight; .layout-name-* defaults to 700 */
+}
+
+/* Display ↔ edit toggle for the Biblioteka name (mirrors the .layout-name-container
+   rules but scoped to the library variant). */
+.library-name-container.editing .layout-name-display {
+  display: none;
+}
+
+.library-name-container.editing .layout-name-edit-wrapper {
+  display: flex;
 }
 
 .modal-close-btn {
@@ -1439,8 +1490,26 @@ textarea:focus {
   <div id="library-modal" class="modal-overlay hidden">
     <div class="modal-container">
       <div class="modal-header">
-        <h2>Biblioteka układów</h2>
-        <button id="modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;klawisz: [ Esc ]">&times;</button>
+        <div id="library-name-container" class="library-name-container" title="Kliknij, aby nazwać Bibliotekę">
+          <div id="library-name-display" class="layout-name-display">
+            <span id="library-name-text">Biblioteka</span>
+          </div>
+          <div id="library-name-edit-wrapper" class="layout-name-edit-wrapper">
+            <span class="layout-name-prefix">Biblioteka:&nbsp;</span>
+            <input type="text" id="library-name-input" class="layout-name-input" maxlength="50" autocomplete="off" spellcheck="false" placeholder="" title="Wpisz nazwę Biblioteki (litery, cyfry, spacje). Trafia do nazwy pliku JSON eksportu jako U_Biblioteka_<nazwa>_<timestamp>.json.&#10;klawisz: [ Enter ] zapisuje, [ Esc ] anuluje" />
+          </div>
+        </div>
+        <span id="library-name-mirror" class="library-name-mirror" aria-hidden="true"></span>
+        <div class="modal-header-actions">
+          <button id="library-export-btn" class="btn btn-secondary btn-small btn-actions-square" title="Eksportuj całą Bibliotekę do pliku JSON (kopia zapasowa)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+          <button id="library-import-btn" class="btn btn-secondary btn-small btn-actions-square" title="Importuj Bibliotekę z pliku JSON (dołącza do istniejących układów; kolizje nazw rozwiązywane przez sufiks -1, -2, …)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          </button>
+          <button id="modal-close-btn" class="modal-close-btn" title="Zamknij okno&#10;klawisz: [ Esc ]">&times;</button>
+        </div>
+        <input type="file" id="library-import-file" accept="application/json,.json" style="display:none;">
       </div>
       <div class="modal-body">
         <!-- Search Bar -->
@@ -3474,6 +3543,11 @@ function init() {
             librarySearchTerm = "";
         }
         refreshLibraryList();
+        // The Biblioteka name's font-fit needs the container's clientWidth,
+        // which is 0 while .hidden. Re-fit now that it's visible.
+        if (typeof adjustLibraryNameFontSize === "function") {
+            adjustLibraryNameFontSize();
+        }
         // Focus search so the user can type immediately.
         setTimeout(() => librarySearchInput && librarySearchInput.focus(), 60);
     }
@@ -3681,6 +3755,237 @@ function init() {
             const layouts = loadSavedLayouts().filter(l => !idsToDelete.includes(l.id));
             saveSavedLayouts(layouts);
             refreshLibraryList();
+        });
+    }
+    // Library backup: export entire bosacki_saved_layouts to a JSON file.
+    const libraryExportBtn = document.getElementById("library-export-btn");
+    const libraryImportBtn = document.getElementById("library-import-btn");
+    const libraryImportFileEl = document.getElementById("library-import-file");
+
+    // ── Biblioteka name ─────────────────────────────────────────────
+    // Click-to-edit name shown as the modal title. Persists in localStorage
+    // (key 'bosacki_library_name'). Used as the export filename prefix and
+    // carried in the JSON envelope so a backup restored elsewhere keeps
+    // its identity.
+    const LIBRARY_NAME_STORAGE_KEY = "bosacki_library_name";
+    const libraryNameContainer = document.getElementById("library-name-container");
+    const libraryNameText = document.getElementById("library-name-text");
+    const libraryNameInput = document.getElementById("library-name-input");
+    const libraryNameMirror = document.getElementById("library-name-mirror");
+    const LIBRARY_NAME_BASE_REM = 1.4;
+    const LIBRARY_NAME_MIN_REM = 0.7;
+    let libraryName = "";
+    function loadLibraryName() {
+        try {
+            const raw = localStorage.getItem(LIBRARY_NAME_STORAGE_KEY);
+            return typeof raw === "string" ? raw : "";
+        } catch (e) { return ""; }
+    }
+    function saveLibraryName(name) {
+        try {
+            localStorage.setItem(LIBRARY_NAME_STORAGE_KEY, name || "");
+        } catch (e) { /* quota or disabled — non-fatal */ }
+    }
+    function adjustLibraryNameFontSize() {
+        if (!libraryNameContainer || !libraryNameMirror) return;
+        let text;
+        if (libraryNameContainer.classList.contains("editing")) {
+            text = `Biblioteka:\u00a0${libraryNameInput ? libraryNameInput.value : ""}`;
+        } else {
+            text = libraryName ? `Biblioteka: ${libraryName}` : "Biblioteka";
+        }
+        libraryNameMirror.textContent = text;
+        const textWidth = libraryNameMirror.offsetWidth;
+        const containerWidth = libraryNameContainer.clientWidth;
+        if (textWidth > containerWidth && containerWidth > 0) {
+            const scale = containerWidth / textWidth;
+            const newSize = Math.max(LIBRARY_NAME_MIN_REM, LIBRARY_NAME_BASE_REM * scale);
+            libraryNameContainer.style.fontSize = `${newSize}rem`;
+        } else {
+            libraryNameContainer.style.fontSize = `${LIBRARY_NAME_BASE_REM}rem`;
+        }
+    }
+    function updateLibraryNameDisplay() {
+        if (!libraryNameText) return;
+        libraryNameText.textContent = libraryName ? `Biblioteka: ${libraryName}` : "Biblioteka";
+        adjustLibraryNameFontSize();
+    }
+    function enterLibraryNamingMode() {
+        if (!libraryNameContainer) return;
+        libraryNameContainer.classList.add("editing");
+        if (libraryNameInput) {
+            libraryNameInput.value = libraryName || "";
+            libraryNameInput.focus();
+            libraryNameInput.select();
+        }
+        adjustLibraryNameFontSize();
+    }
+    function exitLibraryNamingMode() {
+        if (!libraryNameContainer) return;
+        libraryNameContainer.classList.remove("editing");
+        const raw = (libraryNameInput ? libraryNameInput.value : "").trim();
+        // Same sanitization as Układ: letters/digits/spaces incl. Polish chars.
+        const sanitized = raw.replace(/[^\w\u00C0-\u024F\s]/g, "").replace(/\s+/g, " ").trim();
+        libraryName = sanitized;
+        saveLibraryName(libraryName);
+        updateLibraryNameDisplay();
+    }
+    if (libraryNameContainer) {
+        libraryNameContainer.addEventListener("click", (e) => {
+            if (!libraryNameContainer.classList.contains("editing")) {
+                enterLibraryNamingMode();
+                e.stopPropagation();
+            }
+        });
+    }
+    if (libraryNameInput) {
+        libraryNameInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                exitLibraryNamingMode();
+            } else if (e.key === "Escape") {
+                libraryNameInput.value = libraryName || "";
+                exitLibraryNamingMode();
+            }
+        });
+        libraryNameInput.addEventListener("input", adjustLibraryNameFontSize);
+        libraryNameInput.addEventListener("blur", () => {
+            setTimeout(() => {
+                if (libraryNameContainer && libraryNameContainer.classList.contains("editing")) {
+                    if (document.activeElement !== libraryNameInput) {
+                        exitLibraryNamingMode();
+                    }
+                }
+            }, 100);
+        });
+    }
+    // Click outside the naming widget while editing exits the mode.
+    document.addEventListener("click", (e) => {
+        if (libraryNameContainer && libraryNameContainer.classList.contains("editing")) {
+            if (!libraryNameContainer.contains(e.target)) {
+                exitLibraryNamingMode();
+            }
+        }
+    });
+    // Initialise on load.
+    libraryName = loadLibraryName();
+    updateLibraryNameDisplay();
+    // Re-fit on viewport resize and when the modal opens (clientWidth is 0
+    // until the modal becomes visible; openLibraryModal triggers refresh).
+    window.addEventListener("resize", adjustLibraryNameFontSize);
+
+    if (libraryExportBtn) {
+        libraryExportBtn.addEventListener("click", () => {
+            const layouts = loadSavedLayouts();
+            const payload = {
+                schema: "bosacki_saved_layouts",
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                libraryName: libraryName || "",
+                layouts
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)],
+                { type: "application/json;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            // Filename: U_Biblioteka_<safe-name>_<timestamp>.json — same
+            // sanitization rules as elsewhere (transliterate diacritics,
+            // join multi-word with '-'). Empty name → just the timestamp.
+            const safeName = libraryName
+                ? transliterateToAscii(libraryName)
+                    .replace(/[^a-zA-Z0-9\s]/g, "")
+                    .trim()
+                    .replace(/\s+/g, "-")
+                : "";
+            link.href = url;
+            link.download = safeName
+                ? `U_Biblioteka_${safeName}_${getTimestampString()}.json`
+                : `U_Biblioteka_${getTimestampString()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+    }
+    // Library restore: import a previously exported JSON, merging into the
+    // current Biblioteka. Collisions are resolved with the standard -1, -2
+    // suffix convention so nothing is overwritten silently.
+    if (libraryImportBtn && libraryImportFileEl) {
+        libraryImportBtn.addEventListener("click", () => {
+            libraryImportFileEl.value = "";  // allow re-selecting the same file
+            libraryImportFileEl.click();
+        });
+        libraryImportFileEl.addEventListener("change", () => {
+            const file = libraryImportFileEl.files && libraryImportFileEl.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                let parsed;
+                try {
+                    parsed = JSON.parse(String(reader.result));
+                } catch (err) {
+                    alert("Nie udało się odczytać pliku — to nie jest poprawny JSON.");
+                    return;
+                }
+                // Accept both the wrapped envelope { schema, version, layouts } and a bare array.
+                const incoming = Array.isArray(parsed) ? parsed
+                    : (Array.isArray(parsed && parsed.layouts) ? parsed.layouts : null);
+                if (!incoming) {
+                    alert("Plik nie zawiera Biblioteki układów (oczekiwano pola 'layouts' lub tablicy).");
+                    return;
+                }
+                // Validate each entry has the minimum fields.
+                const valid = incoming.filter(l => l && typeof l.name === "string" && typeof l.notation === "string");
+                if (valid.length === 0) {
+                    alert("Plik nie zawiera żadnych poprawnych układów.");
+                    return;
+                }
+                if (!confirm(`Importować ${valid.length} ${valid.length === 1 ? "układ" : "układy"} z pliku?\nIstniejące układy zostaną zachowane; kolizje nazw dostaną sufiks -1, -2, …`)) {
+                    return;
+                }
+                const current = loadSavedLayouts();
+                const out = current.slice();
+                let added = 0;
+                for (const item of valid) {
+                    const existingNames = new Set(out.map(l => l.name.toLowerCase()));
+                    let finalName = item.name;
+                    if (existingNames.has(finalName.toLowerCase())) {
+                        let n = 1;
+                        while (existingNames.has(`${item.name}-${n}`.toLowerCase())) n++;
+                        finalName = `${item.name}-${n}`;
+                    }
+                    out.push({
+                        id: `layout_${Date.now()}_${added}`,
+                        name: finalName,
+                        notation: item.notation,
+                        timestamp: typeof item.timestamp === "number" ? item.timestamp : Date.now()
+                    });
+                    added++;
+                }
+                saveSavedLayouts(out);
+                // If the imported envelope carries a libraryName and we don't
+                // have one set (or it differs), offer to adopt it. Never
+                // silently overwrite a name the user has already chosen.
+                const incomingLibraryName = (parsed && typeof parsed.libraryName === "string")
+                    ? parsed.libraryName.trim()
+                    : "";
+                if (incomingLibraryName && incomingLibraryName !== libraryName) {
+                    const adopt = libraryName
+                        ? confirm(`Plik zawiera nazwę Biblioteki "${incomingLibraryName}". Zastąpić obecną "${libraryName}"?`)
+                        : confirm(`Plik zawiera nazwę Biblioteki "${incomingLibraryName}". Użyć tej nazwy?`);
+                    if (adopt) {
+                        libraryName = incomingLibraryName;
+                        saveLibraryName(libraryName);
+                        updateLibraryNameDisplay();
+                    }
+                }
+                refreshLibraryList();
+                alert(`Zaimportowano ${added} ${added === 1 ? "układ" : "układy"}.`);
+            };
+            reader.onerror = () => {
+                alert("Błąd odczytu pliku.");
+            };
+            reader.readAsText(file);
         });
     }
     if (saveToLibraryBtn) {

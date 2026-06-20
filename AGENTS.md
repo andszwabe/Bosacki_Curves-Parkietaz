@@ -8,6 +8,7 @@ App for artist Piotr Bosacki to generate "parkietaż" curve drawings by typing s
 - **Module sizes 1–32.** Engine clamps; UI says "1 do 32".
 - **Module radius = φ^N** where φ = 1.61803… (golden ratio).
 - **Case-insensitive notation** — `1p` and `1P` are the same.
+- **localStorage keys are pinned forever.** `bosacki_saved_layouts` (Biblioteka) and `bosacki_saved_presets` (Tryb Absolutny presets) are user data that lives on each user's device. Renaming or restructuring either key without a migration step makes user data silently disappear. If a schema change is ever needed, write a backwards-compatible migration that runs on load.
 
 ## Project layout
 
