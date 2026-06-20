@@ -768,6 +768,12 @@ textarea:focus {
   border-color: #16a34a !important;
 }
 
+.save-warning-flash {
+  background: #f97316 !important;
+  color: #ffffff !important;
+  border-color: #f97316 !important;
+}
+
 .layout-checkbox {
   width: 16px;
   height: 16px;
@@ -1514,7 +1520,7 @@ textarea:focus {
       </div>
 
       <div class="actions-row">
-        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …&#10;klawisz: [ Ctrl ] + [ S ]">
+        <button id="save-to-library-btn" class="btn btn-secondary" title="Zapisz bieżący układ w Bibliotece pod nazwą z pola Układ (lub z datą+godziną gdy puste). Kolizje nazw rozwiązywane przez sufiks -1, -2, …&#10;klawisz: [ Ctrl ] / [ Cmd ] + [ S ]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
@@ -4033,11 +4039,18 @@ function init() {
     /** Saves the current notation to the library under appState.ukladName (or
      *  a fresh timestamp if empty). Returns the actual saved name (which may
      *  have been suffixed -1, -2, … to avoid collision). */
+    /** Saves the current układ to the Biblioteka if it isn't already a
+     *  byte-identical copy of an existing entry. Returns one of:
+     *    { status: 'saved',     name: <finalName> }
+     *    { status: 'duplicate', name: <existingName> }
+     *    null  (nothing to save — empty notation)
+     *  Duplicate detection compares the canonical notation + per-series
+     *  meta (transformation + strokeWidth). The display name is ignored
+     *  for the comparison so that re-saving with a different name still
+     *  rejects when the actual content matches. */
     function saveCurrentLayoutToLibrary() {
         const notation = textareaEl.value.trim();
         if (!notation) return null;
-        const baseName = (appState.ukladName || "").trim() || getTimestampString();
-        const finalName = generateUniqueLayoutName(baseName);
         // Capture per-series state so transformations and thickness are
         // restored verbatim on load. Indexed positionally — entry N maps to
         // the Nth whitespace-separated block in the saved notation.
@@ -4046,6 +4059,25 @@ function init() {
             strokeWidth: typeof s.strokeWidth === 'number' ? s.strokeWidth : 1.0
         }));
         const layouts = loadSavedLayouts();
+        // Duplicate detection: notation + seriesMeta must both match.
+        const matchesNotation = (a, b) => (a || "").trim() === (b || "").trim();
+        const matchesMeta = (a, b) => {
+            if (!Array.isArray(a) || !Array.isArray(b)) return false;
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if ((a[i].transformation || 'O') !== (b[i].transformation || 'O')) return false;
+                const swA = typeof a[i].strokeWidth === 'number' ? a[i].strokeWidth : 1.0;
+                const swB = typeof b[i].strokeWidth === 'number' ? b[i].strokeWidth : 1.0;
+                if (swA !== swB) return false;
+            }
+            return true;
+        };
+        const existing = layouts.find(l => matchesNotation(l.notation, notation) && matchesMeta(l.seriesMeta, seriesMeta));
+        if (existing) {
+            return { status: 'duplicate', name: existing.name };
+        }
+        const baseName = (appState.ukladName || "").trim() || getTimestampString();
+        const finalName = generateUniqueLayoutName(baseName);
         layouts.push({
             id: `layout_${Date.now()}`,
             name: finalName,
@@ -4054,7 +4086,7 @@ function init() {
             timestamp: Date.now()
         });
         saveSavedLayouts(layouts);
-        return finalName;
+        return { status: 'saved', name: finalName };
     }
     /** Formats a timestamp (ms) as 'YYYY-MM-DD HH:MM' for the layout list. */
     function formatLayoutTimestamp(ms) {
@@ -4547,15 +4579,20 @@ function init() {
     }
     if (saveToLibraryBtn) {
         saveToLibraryBtn.addEventListener("click", () => {
-            const finalName = saveCurrentLayoutToLibrary();
-            if (!finalName) return;
-            // Inline green confirmation flash on the button itself
+            const result = saveCurrentLayoutToLibrary();
+            if (!result) return;
+            // Inline flash on the button itself: green for a fresh save,
+            // orange when the layout is a byte-identical duplicate.
             const original = saveToLibraryBtnText.textContent;
-            saveToLibraryBtnText.textContent = `Zapisano "${finalName}"`;
-            saveToLibraryBtn.classList.add("save-confirmation-flash");
+            const flashClass = result.status === 'saved' ? 'save-confirmation-flash' : 'save-warning-flash';
+            const flashText = result.status === 'saved'
+                ? `Zapisano "${result.name}"`
+                : `Układ "${result.name}" już istnieje`;
+            saveToLibraryBtnText.textContent = flashText;
+            saveToLibraryBtn.classList.add(flashClass);
             setTimeout(() => {
                 saveToLibraryBtnText.textContent = original;
-                saveToLibraryBtn.classList.remove("save-confirmation-flash");
+                saveToLibraryBtn.classList.remove(flashClass);
             }, 1800);
         });
     }
