@@ -251,12 +251,28 @@ textarea, .textarea-backdrop {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
-  font-family: monospace;
+  /* Pin to an explicit monospace stack so the textarea and backdrop pick
+     the same font on every platform. Bare 'monospace' resolves differently
+     on mobile (system monospace) vs. the backdrop <div> (CSS-resolved),
+     and the resulting glyph-width mismatch causes the caret to drift away
+     from the visible text. */
+  font-family: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
   font-size: 0.83rem;
   line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
   box-sizing: border-box;
+}
+
+/* Mobile-only: bump the textarea+backdrop font-size to 16px so tapping
+   into the field doesn't trigger iOS Safari / mobile Chrome's auto-zoom.
+   Anything below 16px causes the browser to zoom in on focus to make the
+   text 'readable', which then breaks our carefully-tuned single-line
+   layout. Desktop (>768px) stays at the original 0.83rem. */
+@media (max-width: 768px) {
+  textarea, .textarea-backdrop {
+    font-size: 16px;
+  }
 }
 
 textarea {
@@ -1297,6 +1313,14 @@ textarea:focus {
     // make the banner dismissible by tap, and auto-clear after 5s so a single
     // glitch can't make the app look permanently broken.
     window.onerror = function(message, source, lineno, colno, error) {
+      // Cross-origin script errors (third-party CDN code) are sanitised by
+      // browsers to 'Script error.' with no source/line info. They carry zero
+      // actionable detail for the user — and on mobile Firefox in particular
+      // they're frequent and unrelated to anything the user does. Suppress
+      // them entirely; the desktop dev console still surfaces the real error
+      // for any same-origin script we control.
+      if (typeof message === 'string' && message.indexOf('Script error') === 0) return false;
+      if (!source && (lineno === 0 || lineno == null)) return false;
       // Replace any existing banner instead of stacking.
       const old = document.getElementById('app-error-banner');
       if (old && old.parentNode) old.parentNode.removeChild(old);
